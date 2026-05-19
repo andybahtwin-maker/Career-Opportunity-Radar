@@ -7,6 +7,7 @@ OUTPUT_DIR = BASE_DIR / "output"
 
 COMPANIES_FILE = DATA_DIR / "companies.json"
 JOBS_ARCHIVE_FILE = DATA_DIR / "jobs_archive.json"
+SEARCH_PROFILE_FILE = DATA_DIR / "search_profile.md"
 DAILY_DIGEST_FILE = OUTPUT_DIR / "daily_digest.md"
 
 HTTP_TIMEOUT_SECONDS = 20

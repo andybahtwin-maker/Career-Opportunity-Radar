@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
-from config import DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE
+from config import DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
 from digest import digest_eligible, match_reasons, top_digest_jobs
 from storage import add_description_fields, load_archive, save_archive
 from utils import posting_age_days
@@ -12,6 +12,58 @@ from utils import posting_age_days
 
 HOST = "127.0.0.1"
 PORT = 8787
+
+DEFAULT_SEARCH_PROFILE = """# Search Parameters
+
+These parameters describe the current public, generic search intent. They are editable from the local Profile tab and are informational only in this version; scoring still uses `scorers/rules.py`.
+
+## Target roles
+
+- Sales Engineer
+- Solutions Consultant / Solution Consultant
+- Account Executive / Strategic Account Executive / Enterprise Account Executive
+- Customer Success / Construction Success
+- Implementation Consultant / Implementation Specialist
+- Technical Account Manager
+- Technical sales roles
+
+## Target domains
+
+- Construction SaaS
+- AEC technology
+- Drone / reality capture
+- Field operations
+- Contractor workflow
+- Mapping, visualization, and digital twin tools
+
+## Location preference
+
+- Remote
+- United States
+- Denver-friendly
+- Hybrid roles where the location is compatible
+
+## Positive signals
+
+- Technical demos and presentations
+- Customer-facing work
+- Workflow and operations language
+- Construction, AEC, contractor, or field operations language
+- Remote or hybrid work
+- Fresh postings
+
+## Negative signals
+
+- Software engineering
+- Backend or DevOps
+- Marketing
+- Procurement
+- Product operations
+- SDR-only roles
+- Commission-only roles
+- Door-to-door or canvassing
+- Own-vehicle-required language
+"""
 
 
 def run_server(host: str = HOST, port: int = PORT) -> None:
@@ -28,27 +80,46 @@ def run_server(host: str = HOST, port: int = PORT) -> None:
 
 class JobDashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
-        if self.path != "/":
-            self.send_error(404)
+        parsed = urlparse(self.path)
+        if parsed.path in {"/", "/jobs"}:
+            self.write_html(render_jobs_page())
             return
-        body = render_dashboard().encode("utf-8")
+        if parsed.path == "/profile":
+            saved = "saved=1" in parsed.query
+            self.write_html(render_profile_page(saved=saved))
+            return
+        self.send_error(404)
+
+    def do_POST(self) -> None:
+        if self.path == "/toggle-applied":
+            length = int(self.headers.get("Content-Length") or 0)
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            job_id = first_value(form, "id")
+            url = first_value(form, "url")
+            toggle_applied(job_id=job_id, url=url)
+            self.redirect("/jobs")
+            return
+
+        if self.path == "/profile/save":
+            length = int(self.headers.get("Content-Length") or 0)
+            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            save_search_profile(first_value(form, "search_parameters"))
+            self.redirect("/profile?saved=1")
+            return
+
+        self.send_error(404)
+
+    def write_html(self, html_content: str) -> None:
+        body = html_content.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
-    def do_POST(self) -> None:
-        if self.path != "/toggle-applied":
-            self.send_error(404)
-            return
-        length = int(self.headers.get("Content-Length") or 0)
-        form = parse_qs(self.rfile.read(length).decode("utf-8"))
-        job_id = first_value(form, "id")
-        url = first_value(form, "url")
-        toggle_applied(job_id=job_id, url=url)
+    def redirect(self, location: str) -> None:
         self.send_response(303)
-        self.send_header("Location", "/")
+        self.send_header("Location", location)
         self.end_headers()
 
     def log_message(self, format: str, *args: object) -> None:
@@ -71,6 +142,17 @@ def toggle_applied(job_id: str = "", url: str = "") -> bool:
     if changed:
         save_archive(jobs)
     return changed
+
+
+def load_search_profile() -> str:
+    if not SEARCH_PROFILE_FILE.exists():
+        save_search_profile(DEFAULT_SEARCH_PROFILE)
+    return SEARCH_PROFILE_FILE.read_text(encoding="utf-8")
+
+
+def save_search_profile(content: str) -> None:
+    SEARCH_PROFILE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SEARCH_PROFILE_FILE.write_text(content.rstrip() + "\n", encoding="utf-8")
 
 
 def dashboard_jobs() -> list[dict]:
@@ -98,12 +180,33 @@ def job_key(job: dict) -> str:
     return str(job.get("id") or job.get("url") or f"{job.get('company')}|{job.get('title')}")
 
 
-def render_dashboard() -> str:
+def render_jobs_page() -> str:
     jobs = dashboard_jobs()
     cards = "\n".join(render_job_card(job) for job in jobs)
     if not cards:
         cards = '<section class="empty">No high-signal jobs found. Run <code>python3 main.py --json</code> to scan.</section>'
+    return render_page("jobs", cards)
 
+
+def render_profile_page(saved: bool = False) -> str:
+    notice = '<div class="notice">Saved search parameters.</div>' if saved else ""
+    content = f"""
+<section class="profile-panel">
+  {notice}
+  <h2>Search Parameters</h2>
+  <p class="help">Informational only in this version. Scoring still uses <code>scorers/rules.py</code>.</p>
+  <form method="post" action="/profile/save">
+    <label for="search_parameters">Search Parameters</label>
+    <textarea id="search_parameters" name="search_parameters" spellcheck="true">{escape(load_search_profile())}</textarea>
+    <div class="actions">
+      <button type="submit">Save</button>
+    </div>
+  </form>
+</section>"""
+    return render_page("profile", content)
+
+
+def render_page(active_tab: str, content: str) -> str:
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -147,7 +250,29 @@ def render_dashboard() -> str:
       color: var(--muted);
       font-size: 14px;
     }}
-    .card {{
+    .tabs {{
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+      border-bottom: 1px solid var(--border);
+    }}
+    .tab {{
+      display: inline-block;
+      padding: 9px 12px;
+      color: var(--muted);
+      text-decoration: none;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      border-radius: 6px 6px 0 0;
+      font-weight: 650;
+    }}
+    .tab.active {{
+      color: var(--text);
+      background: var(--card);
+      border-color: var(--border);
+      margin-bottom: -1px;
+    }}
+    .card, .profile-panel {{
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -242,6 +367,34 @@ def render_dashboard() -> str:
       border-radius: 8px;
       padding: 18px;
     }}
+    label {{
+      display: block;
+      margin: 14px 0 8px;
+      font-weight: 700;
+    }}
+    textarea {{
+      width: 100%;
+      min-height: 520px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text);
+      font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #fbfcfd;
+    }}
+    .help {{
+      color: var(--muted);
+      margin: 8px 0 0;
+    }}
+    .notice {{
+      border: 1px solid #9ac89f;
+      background: #eef8ef;
+      color: #166534;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+    }}
   </style>
 </head>
 <body>
@@ -249,8 +402,12 @@ def render_dashboard() -> str:
     <header>
       <h1>Career Opportunity Radar</h1>
       <p class="subhead">Local dashboard backed by {escape(str(JOBS_ARCHIVE_FILE))}</p>
+      <nav class="tabs" aria-label="Dashboard tabs">
+        <a class="tab {'active' if active_tab == 'jobs' else ''}" href="/jobs">Jobs / Radar</a>
+        <a class="tab {'active' if active_tab == 'profile' else ''}" href="/profile">Profile</a>
+      </nav>
     </header>
-    {cards}
+    {content}
   </main>
 </body>
 </html>"""

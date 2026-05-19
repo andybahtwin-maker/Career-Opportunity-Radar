@@ -20,15 +20,18 @@ The project is intentionally simple: Python standard library, local JSON files, 
 - Writes a Markdown digest with clickable company/ATS links.
 - Serves a local web dashboard for reviewing top opportunities.
 - Lets you mark jobs as applied from the dashboard or Markdown workflow.
+- Keeps job links direct to the original ATS or company application page.
+- Can be launched from Linux desktop shortcuts for local use.
 
 ## How It Works
 
 1. `data/companies.json` defines the public company watchlist and ATS configuration.
-2. Fetchers collect public job postings and descriptions.
-3. `storage.py` merges jobs into `data/jobs_archive.json`.
-4. `scorers/rules.py` assigns a fit score and match tags.
-5. `digest.py` writes `output/daily_digest.md`.
-6. `web_ui.py` serves a local dashboard at `http://127.0.0.1:8787`.
+2. `data/search_profile.md` stores editable, generic search parameters for the local Profile tab.
+3. Fetchers collect public job postings and descriptions.
+4. `storage.py` merges jobs into `data/jobs_archive.json`.
+5. `scorers/rules.py` assigns a fit score and match tags.
+6. `digest.py` writes `output/daily_digest.md`.
+7. `web_ui.py` serves a local dashboard at `http://127.0.0.1:8787`.
 
 The archive and output files are intentionally ignored by Git because they are local run state.
 
@@ -46,6 +49,34 @@ Review and edit the public company watchlist:
 
 ```bash
 data/companies.json
+```
+
+Initialize your local archive by running a scan:
+
+```bash
+python3 main.py --json
+```
+
+This creates ignored local run-state files such as `data/jobs_archive.json` and `output/daily_digest.md`.
+
+## GitHub Setup
+
+This repository is intended to keep source code, public company configuration, and generic sample search parameters in Git while excluding local run state.
+
+Before publishing your own fork or copy, confirm `.gitignore` excludes:
+
+- `data/jobs_archive.json`
+- `output/`
+- `.env`
+- backups
+- Python cache files
+
+Then configure your local Git identity and remote as usual:
+
+```bash
+git config user.name "Your Name"
+git config user.email "you@example.com"
+git remote add origin <your-repo-url>
 ```
 
 ## Commands
@@ -86,11 +117,32 @@ python3 main.py enrich
 
 ## Local Dashboard
 
-The dashboard shows top digest jobs as cards with company, title, location, score, category, posting age, match reasons, description excerpt, and a direct link to the job posting.
+The local dashboard has two tabs:
+
+- Jobs / Radar: top digest jobs as cards with company, title, location, score, category, posting age, match reasons, description excerpt, and a direct link to the job posting.
+- Profile: editable local search parameters stored in `data/search_profile.md`.
 
 The Applied toggle writes immediately to `data/jobs_archive.json`. Applied jobs are visually muted and remain preserved in the archive.
 
+The Profile tab is informational in the current version. Scoring still uses the static rules in `scorers/rules.py`.
+
 The server binds to `127.0.0.1` only. It is intended for local personal use, not internet exposure.
+
+Jobs tab:
+
+```text
+http://127.0.0.1:8787/jobs
+```
+
+Profile tab:
+
+```text
+http://127.0.0.1:8787/profile
+```
+
+## Desktop Launcher
+
+For Linux desktop environments such as Linux Mint, optional `.desktop` launchers can open the dashboard or start the local server first. Keep those launchers local unless you intentionally generalize them for your own machine, because desktop files often contain absolute paths.
 
 ## Markdown Digest
 
@@ -168,12 +220,21 @@ Tune scoring in:
 scorers/rules.py
 ```
 
+The editable profile text lives in:
+
+```text
+data/search_profile.md
+```
+
+The committed file contains generic/public sample parameters. Do not put private resume content in this file if you plan to publish the repository.
+
 ## Screenshots
 
-Dashboard screenshot placeholder:
+Expected screenshot placeholders:
 
 ```text
 screenshots/dashboard.png
+screenshots/profile.png
 ```
 
 ## Portfolio Angle
@@ -186,15 +247,25 @@ This project demonstrates Python automation, ATS/job-board scraping, structured 
 - No third-party Python packages.
 - No API keys required.
 - Local archive and generated digest are ignored by Git.
+- `data/search_profile.md` is committed only as generic sample search parameters.
 - Dashboard binds to `127.0.0.1`.
 - Public repo should include code and public company configuration only.
+
+## Roadmap / Planned Features
+
+- Editable master resume stored locally and excluded from public Git history.
+- Smarter scoring that can optionally use Profile tab search parameters.
+- Recruiter CRM for contacts, outreach status, and follow-ups.
+- AI-assisted summaries for top jobs while keeping raw data local.
+- Company notes and watchlist health indicators.
+- Interview tracking with dates, stages, notes, and next actions.
 
 ## Validation
 
 Run:
 
 ```bash
-python3 -m py_compile main.py web_ui.py digest.py storage.py
+python3 -m py_compile main.py web_ui.py digest.py storage.py utils.py validation.py fetchers/*.py scorers/*.py
 python3 main.py test
 python3 main.py digest
 ```
