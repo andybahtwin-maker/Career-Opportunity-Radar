@@ -1,3 +1,9 @@
+<img width="1918" height="1404" alt="radar-screenshot-20260519-142016" src="https://github.com/user-attachments/assets/38906b3a-b351-4bc7-a2d8-b6d7c0a0e09c" />
+<img width="1908" height="1536" alt="radar-screenshot-20260519-141950" src="https://github.com/user-attachments/assets/ac33a215-91a4-4a27-b63b-7997a979dd7e" />
+
+
+
+
 # Career Opportunity Radar
 
 Career Opportunity Radar is a local-first Python tool that monitors selected company career pages, scores relevant roles, and produces a small daily digest of high-signal job opportunities.
