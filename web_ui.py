@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from config import DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
-from digest import digest_eligible, match_reasons, top_digest_jobs
+from digest import digest_eligible, match_reasons, source_label, top_digest_jobs
 from storage import add_description_fields, load_archive, save_archive
 from utils import posting_age_days
 
@@ -194,7 +194,7 @@ def render_profile_page(saved: bool = False) -> str:
 <section class="profile-panel">
   {notice}
   <h2>Search Parameters</h2>
-  <p class="help">Informational only in this version. Scoring still uses <code>scorers/rules.py</code>.</p>
+  <p class="help">Search parameters document the scoring and filtering intent used by the local rules. Discovery sources are configured separately in <code>data/discovery_sources.json</code>.</p>
   <form method="post" action="/profile/save">
     <label for="search_parameters">Search Parameters</label>
     <textarea id="search_parameters" name="search_parameters" spellcheck="true">{escape(load_search_profile())}</textarea>
@@ -469,6 +469,7 @@ def render_job_card(job: dict) -> str:
   <div class="meta">
     <span class="pill">{escape(job.get("location") or "Location not listed")}</span>
     <span class="pill">{escape(job.get("company_category") or "Not categorized")}</span>
+    <span class="pill">{escape(source_label(job))}</span>
     <span class="pill">{escape(applied_label)}</span>
     {age_text}
   </div>

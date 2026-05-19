@@ -5,9 +5,10 @@ import json
 import sys
 from datetime import datetime, timezone
 
-from config import COMPANIES_FILE, DAILY_DIGEST_FILE, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE
+from config import COMPANIES_FILE, DAILY_DIGEST_FILE, DIGEST_MIN_SCORE, DISCOVERY_SOURCES_FILE, JOBS_ARCHIVE_FILE
 from digest import digest_eligible, match_reasons, top_digest_jobs, write_digest
 from fetchers import FETCHERS
+from fetchers.discovery import fetch_discovery_sources, load_discovery_sources
 from scorers import score_job
 from storage import (
     add_description_fields,
@@ -40,6 +41,8 @@ def run_scan() -> dict:
         for job in jobs:
             job["company_category"] = company.get("category", "")
             job["company_priority"] = company.get("priority", 0)
+            job["source_kind"] = "company_watchlist"
+            job["source_name"] = company.get("company_name", "")
         fetched_jobs.extend(jobs)
         errors.extend(fetch_errors)
 
@@ -75,6 +78,43 @@ def run_scan() -> dict:
     }
 
 
+def run_discovery() -> dict:
+    sources = [source for source in load_discovery_sources() if source.get("enabled", True)]
+    archive = load_archive()
+    fetched_jobs, errors = fetch_discovery_sources(sources)
+
+    _, description_warnings = enrich_job_descriptions(fetched_jobs)
+    errors.extend(description_warnings)
+
+    merged, new_count = merge_jobs(archive, fetched_jobs)
+    save_archive(merged)
+
+    fetched_ids = {job_identity(job) for job in fetched_jobs}
+    fetched_title_company = {normalized_title_company(job) for job in fetched_jobs}
+    accepted_jobs = [
+        job
+        for job in merged
+        if not job.get("ignored")
+        and not job.get("applied")
+        and (
+            job.get("id") in fetched_ids
+            or normalized_title_company(job) in fetched_title_company
+        )
+        and job.get("fit_score", 0) >= DIGEST_MIN_SCORE
+        and digest_eligible(job)
+    ]
+
+    return {
+        "sources_checked": len(sources),
+        "jobs_fetched": len(fetched_jobs),
+        "jobs_accepted": len(accepted_jobs),
+        "jobs_rejected": max(len(fetched_jobs) - len(accepted_jobs), 0),
+        "new_jobs_added": new_count,
+        "archive_size": len(merged),
+        "warnings": errors,
+    }
+
+
 def scan() -> int:
     result = run_scan()
     print(f"Companies checked: {result['companies_checked']}")
@@ -89,13 +129,29 @@ def scan() -> int:
     return 0
 
 
+def discover() -> int:
+    result = run_discovery()
+    print(f"Discovery sources checked: {result['sources_checked']}")
+    print(f"Jobs fetched: {result['jobs_fetched']}")
+    print(f"New jobs added: {result['new_jobs_added']}")
+    print(f"Archive size: {result['archive_size']}")
+    print(f"Wrote: {JOBS_ARCHIVE_FILE}")
+    if result["warnings"]:
+        print("Discovery warnings:")
+        for error in result["warnings"][:20]:
+            print(f"  - {error}")
+    return 0
+
+
 def json_run() -> int:
     errors = []
     scan_result = {}
+    discovery_result = {}
     digest_jobs = []
 
     try:
         scan_result = run_scan()
+        discovery_result = run_discovery()
         write_digest()
         digest_jobs = top_digest_jobs()
     except Exception as exc:
@@ -103,11 +159,13 @@ def json_run() -> int:
 
     payload = {
         "run_timestamp": datetime.now(timezone.utc).isoformat(),
-        "total_jobs_scanned": scan_result.get("jobs_fetched", 0),
-        "jobs_accepted": scan_result.get("jobs_accepted", 0),
-        "jobs_rejected": scan_result.get("jobs_rejected", 0),
+        "total_jobs_scanned": scan_result.get("jobs_fetched", 0) + discovery_result.get("jobs_fetched", 0),
+        "company_watchlist": scan_result,
+        "discovery": discovery_result,
+        "jobs_accepted": scan_result.get("jobs_accepted", 0) + discovery_result.get("jobs_accepted", 0),
+        "jobs_rejected": scan_result.get("jobs_rejected", 0) + discovery_result.get("jobs_rejected", 0),
         "top_opportunities": [json_job(job) for job in digest_jobs],
-        "warnings": scan_result.get("warnings", []),
+        "warnings": scan_result.get("warnings", []) + discovery_result.get("warnings", []),
         "errors": errors,
         "output_files": {
             "jobs_archive": str(JOBS_ARCHIVE_FILE),
@@ -129,8 +187,15 @@ def json_job(job: dict) -> dict:
         "has_description": bool(job.get("has_description")),
         "score": job.get("fit_score", 0),
         "category": job.get("company_category") or "Not categorized",
+        "source": source_label(job),
         "why_it_matched": match_reasons(job) or ["matched scoring rules"],
     }
+
+
+def source_label(job: dict) -> str:
+    if job.get("source_kind") == "discovery":
+        return f"Discovery source: {job.get('source_name') or job.get('ats_source') or 'Unknown'}"
+    return "Curated company watchlist"
 
 
 def validate() -> int:
@@ -264,6 +329,7 @@ def usage() -> int:
     print("Usage:")
     print("  python main.py --json")
     print("  python main.py scan")
+    print("  python main.py discover")
     print("  python main.py digest")
     print("  python main.py enrich")
     print("  python main.py sync-applied")
@@ -273,6 +339,7 @@ def usage() -> int:
     print("  python main.py validate")
     print("")
     print(f"Companies: {COMPANIES_FILE}")
+    print(f"Discovery: {DISCOVERY_SOURCES_FILE}")
     print(f"Archive:   {JOBS_ARCHIVE_FILE}")
     return 1
 
@@ -285,6 +352,8 @@ def main(argv: list[str]) -> int:
         return json_run()
     if command == "scan":
         return scan()
+    if command == "discover":
+        return discover()
     if command == "digest":
         return digest()
     if command == "enrich":

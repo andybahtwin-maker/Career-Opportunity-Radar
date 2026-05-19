@@ -136,6 +136,7 @@ def write_digest(path=DAILY_DIGEST_FILE) -> tuple[str, list[dict]]:
                     "",
                     f"- Score: {job.get('fit_score')}",
                     f"- Category: {job.get('company_category') or 'Not categorized'}",
+                    f"- Source: {source_label(job)}",
                     f"- Location: {job.get('location') or 'Not listed'}",
                     f"- Posting age: {age_text}",
                     f"- Why it matched: {why}",
@@ -151,6 +152,12 @@ def write_digest(path=DAILY_DIGEST_FILE) -> tuple[str, list[dict]]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
     return content, jobs
+
+
+def source_label(job: dict) -> str:
+    if job.get("source_kind") == "discovery":
+        return f"Discovery source: {job.get('source_name') or job.get('ats_source') or 'Unknown'}"
+    return "Curated company watchlist"
 
 
 def match_reasons(job: dict) -> list[str]:

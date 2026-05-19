@@ -118,12 +118,17 @@ def enrich_job_descriptions(jobs: list[dict]) -> tuple[int, list[str]]:
 
 def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[list[dict], int]:
     by_id = {}
+    by_url = {}
     by_title_company = {}
     for job in existing_jobs:
         add_description_fields(job)
         job_id = job.get("id") or job_identity(job)
         job["id"] = job_id
+        job.setdefault("source_kind", "company_watchlist")
+        job.setdefault("source_name", job.get("company", ""))
         by_id[job_id] = job
+        if job.get("url"):
+            by_url[job.get("url")] = job_id
         by_title_company[normalized_title_company(job)] = job_id
 
     new_count = 0
@@ -131,7 +136,9 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
     for job in fetched_jobs:
         job_id = job_identity(job)
         title_company_key = normalized_title_company(job)
-        existing_id = by_title_company.get(title_company_key)
+        existing_id = by_url.get(job.get("url")) if job.get("url") else None
+        if not existing_id:
+            existing_id = by_title_company.get(title_company_key)
         if existing_id:
             job_id = existing_id
 
@@ -151,6 +158,8 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "first_seen": today,
             "last_seen": today,
             "ats_source": job.get("ats_source", ""),
+            "source_kind": job.get("source_kind", "company_watchlist"),
+            "source_name": job.get("source_name") or job.get("company", ""),
             "raw_description": raw_description,
             "fit_score": score,
             "tags": tags,
@@ -175,6 +184,8 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
         normalized["tags"] = tags
 
         by_id[job_id] = normalized
+        if normalized.get("url"):
+            by_url[normalized.get("url")] = job_id
         by_title_company[title_company_key] = job_id
 
     return sorted(by_id.values(), key=lambda item: item.get("fit_score", 0), reverse=True), new_count

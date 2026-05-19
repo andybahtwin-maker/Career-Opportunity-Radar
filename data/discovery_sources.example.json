@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Example Public JSON Job Source",
+    "enabled": false,
+    "source_type": "himalayas_api",
+    "search_url_template": "https://himalayas.app/jobs/api/search?q={keyword}&country=US&sort=recent",
+    "keywords": [
+      "sales engineer",
+      "solutions consultant"
+    ],
+    "location_terms": [
+      "US"
+    ],
+    "max_results_per_keyword": 20,
+    "notes": "Use only public pages or JSON endpoints that are available without authentication. Do not add LinkedIn or sources that require login, anti-bot bypasses, or private account access."
+  }
+]

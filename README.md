@@ -1,7 +1,8 @@
 # Career Opportunity Radar
-Career Opportunity Radar is a local-first Python tool that monitors selected company career pages, scores relevant roles, and produces a small daily digest of high-signal job opportunities.
 
-It is built for targeted review, not mass application spam. It does not auto-apply, send messages, or scrape private accounts. It reads public ATS/company job pages, stores a local archive, and gives you a concise workflow for deciding what is worth opening.
+Career Opportunity Radar is a local-first Python tool that monitors selected company career pages, discovers broader public job listings, scores relevant roles, and produces a small daily digest of high-signal job opportunities.
+
+It is built for targeted review, not mass application spam. It does not auto-apply, send messages, scrape LinkedIn, bypass login walls, or scrape private accounts. It reads public ATS/company job pages and conservative public job APIs, stores a local archive, and gives you a concise workflow for deciding what is worth opening.
 
 
 **Jobs / Radar dashboard**
@@ -26,11 +27,13 @@ The project is intentionally simple: Python standard library, local JSON files, 
 
 - Scans public career pages and ATS job-board endpoints.
 - Supports Lever, Greenhouse, Ashby, Workable, and conservative generic page parsing.
+- Discovers jobs beyond the watchlist through explicitly configured public discovery sources.
 - Stores normalized job records locally.
+- Dedupes discovered and curated jobs by URL first, then by company/title.
 - Pulls job descriptions when available and extracts readable page text as a fallback.
 - Scores jobs with transparent keyword/rule-based logic.
 - Writes a Markdown digest with clickable company/ATS links.
-- Serves a local web dashboard for reviewing top opportunities.
+- Serves a local web dashboard for reviewing top opportunities from both curated companies and broader discovery sources.
 - Lets you mark jobs as applied from the dashboard or Markdown workflow.
 - Keeps job links direct to the original ATS or company application page.
 - Can be launched from Linux desktop shortcuts for local use.
@@ -40,16 +43,19 @@ The project is intentionally simple: Python standard library, local JSON files, 
 - Profile tab for editing local search parameters.
 - Editable `data/search_profile.md` sample profile.
 - Expandable job descriptions for a cleaner Jobs / Radar dashboard.
+- Discovery sources in `data/discovery_sources.json`.
+- Source labels in the digest and local dashboard.
 
 ## How It Works
 
-1. `data/companies.json` defines the public company watchlist and ATS configuration.
-2. `data/search_profile.md` stores editable, generic search parameters for the local Profile tab.
-3. Fetchers collect public job postings and descriptions.
-4. `storage.py` merges jobs into `data/jobs_archive.json`.
-5. `scorers/rules.py` assigns a fit score and match tags.
-6. `digest.py` writes `output/daily_digest.md`.
-7. `web_ui.py` serves a local dashboard at `http://127.0.0.1:8787`.
+1. `data/companies.json` defines the curated public company watchlist and ATS configuration.
+2. `data/discovery_sources.json` defines broader public discovery sources.
+3. `data/search_profile.md` stores editable, generic search parameters for the local Profile tab.
+4. Fetchers collect public job postings and descriptions.
+5. `storage.py` merges jobs into `data/jobs_archive.json`, deduping by URL first and then company/title.
+6. `scorers/rules.py` assigns a fit score and match tags.
+7. `digest.py` writes `output/daily_digest.md`.
+8. `web_ui.py` serves a local dashboard at `http://127.0.0.1:8787`.
 
 The archive and output files are intentionally ignored by Git because they are local run state.
 
@@ -67,6 +73,12 @@ Review and edit the public company watchlist:
 
 ```bash
 data/companies.json
+```
+
+Review and edit broader public discovery sources:
+
+```bash
+data/discovery_sources.json
 ```
 
 Initialize your local archive by running a scan:
@@ -105,6 +117,14 @@ Run a scan, update the archive, write the digest, and print n8n-friendly JSON:
 python3 main.py --json
 ```
 
+This runs the curated company watchlist and the configured discovery sources.
+
+Run only broader public discovery sources:
+
+```bash
+python3 main.py discover
+```
+
 Write the Markdown digest from the current archive:
 
 ```bash
@@ -127,6 +147,7 @@ Other useful commands:
 
 ```bash
 python3 main.py scan
+python3 main.py discover
 python3 main.py list
 python3 main.py validate
 python3 main.py sync-applied
@@ -137,14 +158,14 @@ python3 main.py enrich
 
 The local dashboard has two tabs:
 
-- Jobs / Radar: top digest jobs as cards with company, title, location, score, category, posting age, match reasons, collapsed/expandable description excerpts, and a direct link to the job posting.
-- Profile: editable local search parameters stored in `data/search_profile.md`.
+- Jobs / Radar: top digest jobs as cards with company, title, location, score, category, source label, posting age, match reasons, collapsed/expandable description excerpts, and a direct link to the job posting.
+- Profile: editable local search parameters stored in `data/search_profile.md`, plus a note that broader discovery is configured in `data/discovery_sources.json`.
 
 The Applied toggle writes immediately to `data/jobs_archive.json`. Applied jobs are visually muted and remain preserved in the archive.
 
 Job descriptions start collapsed for easier scanning. A lightweight inline vanilla JavaScript toggle expands or collapses the full excerpt without reloading the page.
 
-The Profile tab is informational in the current version. Scoring still uses the static rules in `scorers/rules.py`.
+The Profile tab documents search intent used by the local rules. Scoring still uses the static rules in `scorers/rules.py`, and discovery source keywords live in `data/discovery_sources.json`.
 
 The server binds to `127.0.0.1` only. It is intended for local personal use, not internet exposure.
 
@@ -175,6 +196,7 @@ output/daily_digest.md
 Each job includes:
 
 - score and category
+- source label
 - why it matched
 - a direct Markdown link to the company/ATS posting
 - raw URL for automation/sync
@@ -205,6 +227,11 @@ Career Opportunity Radar is a review aid. It does not submit applications, gener
 
 ## Configuration
 
+Career Opportunity Radar has two source types:
+
+- Curated company monitoring: specific companies in `data/companies.json`.
+- Broader discovery: public job sources in `data/discovery_sources.json`.
+
 Each company entry looks like:
 
 ```json
@@ -229,6 +256,30 @@ Supported `ats_type` values:
 - `generic`
 
 For API-backed ATS systems, `ats_board` is usually the public slug in the careers URL.
+
+Each discovery source entry looks like:
+
+```json
+{
+  "name": "Himalayas Remote Jobs API",
+  "enabled": true,
+  "source_type": "himalayas_api",
+  "search_url_template": "https://himalayas.app/jobs/api/search?q={keyword}&country=US&sort=recent",
+  "keywords": ["sales engineer", "solutions consultant"],
+  "location_terms": ["US"],
+  "max_results_per_keyword": 20,
+  "notes": "Public JSON search endpoint. No authentication required."
+}
+```
+
+Supported discovery `source_type` values:
+
+- `himalayas_api`
+- `remotejobs_api`
+
+Discovery is intentionally conservative. Add only public pages, RSS feeds, or JSON endpoints that work without authentication. LinkedIn is intentionally not scraped, and sources that require login, private-account access, anti-bot bypasses, or browser automation should not be added.
+
+Discovery jobs are normalized into the same archive shape as curated company jobs, deduped with the same merge path, scored with the same rules, and shown in the same dashboard and digest with explicit source labels. This lets the Jobs / Radar tab surface broader technical sales, solutions consulting, customer success, and implementation opportunities beyond the manually selected company list without changing the existing company-watchlist scanner.
 
 ## Scoring
 
@@ -267,6 +318,7 @@ This project demonstrates Python automation, ATS/job-board scraping, structured 
 - No third-party Python packages.
 - No API keys required.
 - Local archive and generated digest are ignored by Git.
+- Discovery source configuration is public and conservative.
 - `data/search_profile.md` is committed only as generic sample search parameters.
 - Dashboard binds to `127.0.0.1`.
 - Public repo should include code and public company configuration only.
@@ -287,5 +339,7 @@ Run:
 ```bash
 python3 -m py_compile main.py web_ui.py digest.py storage.py utils.py validation.py fetchers/*.py scorers/*.py
 python3 main.py test
+python3 main.py discover
+python3 main.py --json
 python3 main.py digest
 ```

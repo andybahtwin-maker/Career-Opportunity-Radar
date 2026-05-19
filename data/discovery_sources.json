@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Himalayas Remote Jobs API",
+    "enabled": true,
+    "source_type": "himalayas_api",
+    "search_url_template": "https://himalayas.app/jobs/api/search?q={keyword}&country=US&sort=recent",
+    "keywords": [
+      "sales engineer",
+      "solutions consultant",
+      "account executive",
+      "customer success manager",
+      "implementation consultant"
+    ],
+    "location_terms": [
+      "US"
+    ],
+    "max_results_per_keyword": 20,
+    "notes": "Public JSON search endpoint documented by Himalayas. No authentication required. Keep request volume low and link back to the original posting URL."
+  },
+  {
+    "name": "RemoteJobs.org API",
+    "enabled": true,
+    "source_type": "remotejobs_api",
+    "search_url_template": "https://remotejobs.org/api/v1/jobs?q={keyword}&limit={limit}",
+    "keywords": [
+      "sales engineer",
+      "solutions consultant",
+      "account executive",
+      "customer success",
+      "implementation"
+    ],
+    "location_terms": [
+      "Remote"
+    ],
+    "max_results_per_keyword": 20,
+    "notes": "Public JSON endpoint documented by RemoteJobs.org. No authentication required. RemoteJobs.org requests visible attribution if displaying its listings."
+  }
+]

@@ -6,6 +6,7 @@ DATA_DIR = BASE_DIR / "data"
 OUTPUT_DIR = BASE_DIR / "output"
 
 COMPANIES_FILE = DATA_DIR / "companies.json"
+DISCOVERY_SOURCES_FILE = DATA_DIR / "discovery_sources.json"
 JOBS_ARCHIVE_FILE = DATA_DIR / "jobs_archive.json"
 SEARCH_PROFILE_FILE = DATA_DIR / "search_profile.md"
 DAILY_DIGEST_FILE = OUTPUT_DIR / "daily_digest.md"
