@@ -1,0 +1,185 @@
+[
+  {
+    "company_name": "Propeller Aero",
+    "category": "reality_capture",
+    "priority": 10,
+    "notes": "Strong archetype match: construction, drones, mapping, account/solutions roles. Careers page appears to change ATS over time; generic fallback is safest for now.",
+    "careers_url": "https://www.propelleraero.com/about-us/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "DroneDeploy",
+    "category": "drone_reality_capture",
+    "priority": 10,
+    "notes": "Very strong fit: AEC, drone/reality capture, remote AE roles. Lever board verified from public jobs page.",
+    "careers_url": "https://jobs.lever.co/dronedeploy/",
+    "ats_type": "lever",
+    "ats_board": "dronedeploy",
+    "enabled": true
+  },
+  {
+    "company_name": "BuildOps",
+    "category": "contractor_workflow",
+    "priority": 10,
+    "notes": "Commercial contractor operations platform. Greenhouse board visible via public job-board endpoint.",
+    "careers_url": "https://buildops.com/careers/",
+    "ats_type": "greenhouse",
+    "ats_board": "buildops",
+    "enabled": true
+  },
+  {
+    "company_name": "Fieldwire",
+    "category": "construction_saas",
+    "priority": 9,
+    "notes": "Hilti-owned field management platform. Public careers page exposes Greenhouse job IDs; Greenhouse board slug may need validation over time.",
+    "careers_url": "https://www.fieldwire.com/uk/jobs/",
+    "ats_type": "greenhouse",
+    "ats_board": "fieldwire",
+    "enabled": true
+  },
+  {
+    "company_name": "OpenSpace",
+    "category": "reality_capture",
+    "priority": 9,
+    "notes": "Construction reality capture. Public careers page exposes Greenhouse job IDs, but the simple Greenhouse API slug is not stable, so generic monitoring is safer for V1.",
+    "careers_url": "https://www.openspace.ai/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Procore",
+    "category": "construction_saas",
+    "priority": 9,
+    "notes": "Large construction SaaS. Careers site is not a simple supported ATS; generic fallback intentionally conservative.",
+    "careers_url": "https://www.procore.com/jobs",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Autodesk",
+    "category": "aec_tech",
+    "priority": 8,
+    "notes": "AEC/design software leader. Careers are enterprise-backed, so V1 uses generic page monitoring.",
+    "careers_url": "https://www.autodesk.com/careers/overview",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Trimble",
+    "category": "aec_geospatial",
+    "priority": 8,
+    "notes": "Construction/geospatial hardware and software. Enterprise careers system; generic fallback.",
+    "careers_url": "https://www.trimble.com/en/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "ServiceTitan",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Home/commercial services vertical SaaS. Strong customer success/sales fit; generic fallback.",
+    "careers_url": "https://www.servicetitan.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Jobber",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Home service operations software. Generic page monitoring for V1.",
+    "careers_url": "https://www.getjobber.com/about/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Housecall Pro",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Home service field operations platform. Generic page monitoring for V1.",
+    "careers_url": "https://www.housecallpro.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Assignar",
+    "category": "contractor_workflow",
+    "priority": 8,
+    "notes": "Construction operations/workforce platform. Generic fallback is intentionally strict to avoid marketing-link noise.",
+    "careers_url": "https://www.assignar.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Raken",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Construction field reporting and daily reports. Generic fallback.",
+    "careers_url": "https://www.rakenapp.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Bluebeam",
+    "category": "aec_tech",
+    "priority": 7,
+    "notes": "AEC document/workflow software. Public careers discovery can be indirect; generic fallback.",
+    "careers_url": "https://www.bluebeam.com/company/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Bentley Systems",
+    "category": "aec_infrastructure",
+    "priority": 7,
+    "notes": "Infrastructure engineering software. Public jobs page is enterprise-backed; generic fallback.",
+    "careers_url": "https://www.bentley.com/company/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Hexagon",
+    "category": "mapping_visualization",
+    "priority": 7,
+    "notes": "Geospatial, asset lifecycle, industrial/facilities technology. Generic fallback.",
+    "careers_url": "https://hexagon.com/company/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Esri",
+    "category": "mapping_visualization",
+    "priority": 7,
+    "notes": "GIS and mapping platform. Public job pages are crawlable but not a supported ATS; generic fallback.",
+    "careers_url": "https://www.esri.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Matterport",
+    "category": "reality_capture",
+    "priority": 7,
+    "notes": "Digital twin/reality capture. Public careers access may block scripts; validate will flag if blocked.",
+    "careers_url": "https://matterport.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Buildxact",
+    "category": "contractor_workflow",
+    "priority": 7,
+    "notes": "Residential construction estimating/job management. Careers page found on UK site; generic fallback.",
+    "careers_url": "https://www.buildxact.com/uk/company/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Cupix",
+    "category": "reality_capture",
+    "priority": 7,
+    "notes": "3D digital twin/reality capture. Simple careers page; generic fallback.",
+    "careers_url": "https://homes.cupix.com/careers.html",
+    "ats_type": "generic",
+    "enabled": true
+  }
+]

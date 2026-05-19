@@ -1,0 +1,24 @@
+# Local state and generated outputs
+data/jobs_archive.json
+output/
+*.log
+logs/
+
+# Environment and secrets
+.env
+.env.*
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# Local backups
+*.bak
+*.bak-*
+*.backup
+fetchers.bak-*/
+
+# Local tool/session metadata
+.agents/
+.codex/
