@@ -25,11 +25,13 @@ The dashboard has two tabs:
 - Jobs / Radar: reads jobs from `data/jobs_archive.json`. Each job card has an Applied toggle. Clicking the toggle immediately updates that job's `applied` value in `data/jobs_archive.json`, then reloads the dashboard.
 - Profile: edits search parameters stored in `data/search_profile.md`.
 
+Job descriptions are collapsed by default to keep the radar easy to scan. Use the Show more / Show less control on each card to expand or collapse the full excerpt inline without leaving the page.
+
 The Profile tab is informational in this version. Scoring still uses `scorers/rules.py`.
 
 `data/search_profile.md` is committed as a generic public sample. Do not add private resume content to it before publishing.
 
-The job cards link directly to the original ATS or company job posting. No applications are submitted automatically.
+The job cards link directly to the original ATS or company job posting. No applications are submitted automatically. The UI uses only local Python, HTML, CSS, and lightweight vanilla JavaScript.
 
 Optional Linux desktop launchers can be created to open the dashboard or start the server first. Keep those launcher files local unless their paths are generalized for your machine.
 

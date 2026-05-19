@@ -23,6 +23,12 @@ The project is intentionally simple: Python standard library, local JSON files, 
 - Keeps job links direct to the original ATS or company application page.
 - Can be launched from Linux desktop shortcuts for local use.
 
+## Recent Updates
+
+- Profile tab for editing local search parameters.
+- Editable `data/search_profile.md` sample profile.
+- Expandable job descriptions for a cleaner Jobs / Radar dashboard.
+
 ## How It Works
 
 1. `data/companies.json` defines the public company watchlist and ATS configuration.
@@ -119,10 +125,12 @@ python3 main.py enrich
 
 The local dashboard has two tabs:
 
-- Jobs / Radar: top digest jobs as cards with company, title, location, score, category, posting age, match reasons, description excerpt, and a direct link to the job posting.
+- Jobs / Radar: top digest jobs as cards with company, title, location, score, category, posting age, match reasons, collapsed/expandable description excerpts, and a direct link to the job posting.
 - Profile: editable local search parameters stored in `data/search_profile.md`.
 
 The Applied toggle writes immediately to `data/jobs_archive.json`. Applied jobs are visually muted and remain preserved in the archive.
+
+Job descriptions start collapsed for easier scanning. A lightweight inline vanilla JavaScript toggle expands or collapses the full excerpt without reloading the page.
 
 The Profile tab is informational in the current version. Scoring still uses the static rules in `scorers/rules.py`.
 

@@ -276,8 +276,8 @@ def render_page(active_tab: str, content: str) -> str:
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 18px;
-      margin: 14px 0;
+      padding: 16px 18px;
+      margin: 12px 0;
       box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
     }}
     .card.applied {{
@@ -329,8 +329,22 @@ def render_page(active_tab: str, content: str) -> str:
       font-size: 14px;
     }}
     .description {{
-      margin: 12px 0 16px;
+      margin: 10px 0 14px;
       color: #344054;
+    }}
+    .description-preview, .description-full {{
+      white-space: pre-wrap;
+    }}
+    .description-full[hidden], .description-preview[hidden] {{
+      display: none;
+    }}
+    .link-button {{
+      border: 0;
+      padding: 4px 0;
+      color: var(--accent);
+      background: transparent;
+      font-weight: 650;
+      text-decoration: underline;
     }}
     .actions {{
       display: flex;
@@ -409,6 +423,22 @@ def render_page(active_tab: str, content: str) -> str:
     </header>
     {content}
   </main>
+  <script>
+    document.addEventListener('click', function (event) {{
+      var button = event.target.closest('[data-description-toggle]');
+      if (!button) {{
+        return;
+      }}
+      var description = button.closest('.description');
+      var preview = description.querySelector('.description-preview');
+      var full = description.querySelector('.description-full');
+      var expanded = button.getAttribute('aria-expanded') === 'true';
+      preview.hidden = !expanded;
+      full.hidden = expanded;
+      button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      button.textContent = expanded ? 'Show more' : 'Show less';
+    }});
+  </script>
 </body>
 </html>"""
 
@@ -422,6 +452,11 @@ def render_job_card(job: dict) -> str:
     applied_label = "Applied" if applied else "Not applied"
     applied_action = "Mark not applied" if applied else "Mark applied"
     url = str(job.get("url") or "")
+    description = str(job.get("description_excerpt") or "No description excerpt available.")
+    preview = description_preview(description)
+    toggle = ""
+    if preview != description:
+        toggle = '<button class="link-button" type="button" data-description-toggle aria-expanded="false">Show more</button>'
 
     return f"""<section class="card {'applied' if applied else ''}">
   <div class="topline">
@@ -438,7 +473,11 @@ def render_job_card(job: dict) -> str:
     {age_text}
   </div>
   <div class="why"><strong>Why it matched:</strong> {escape(reasons)}</div>
-  <div class="description">{escape(job.get("description_excerpt") or "No description excerpt available.")}</div>
+  <div class="description">
+    <div class="description-preview">{escape(preview)}</div>
+    <div class="description-full" hidden>{escape(description)}</div>
+    {toggle}
+  </div>
   <div class="actions">
     <a class="button" href="{escape(url)}" target="_blank" rel="noopener noreferrer">Open job posting</a>
     <form method="post" action="/toggle-applied">
@@ -448,6 +487,14 @@ def render_job_card(job: dict) -> str:
     </form>
   </div>
 </section>"""
+
+
+def description_preview(description: str, limit: int = 300) -> str:
+    description = " ".join(description.split())
+    if len(description) <= limit:
+        return description
+    trimmed = description[:limit].rsplit(" ", 1)[0].rstrip(".,;:")
+    return f"{trimmed}..."
 
 
 def escape(value: object) -> str:
