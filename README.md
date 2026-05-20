@@ -2,6 +2,8 @@
 Career Opportunity Radar is a local-first Python tool that monitors selected company career pages, discovers broader public job listings, scores relevant roles, and produces a small daily digest of high-signal job opportunities.
 It is built for targeted review, not mass application spam. It does not auto-apply, send messages, scrape LinkedIn, bypass login walls, or scrape private accounts. It reads public ATS/company job pages and conservative public job APIs, stores a local archive, and gives you a concise workflow for deciding what is worth opening.
 
+Built as a practical example of local-first automation, workflow design, and AI-assisted software development for technical sales/job-search operations.
+
 **Jobs / Radar dashboard**
 <img width="1756" height="1442" alt="radar-screenshot-20260519-184355" src="https://github.com/user-attachments/assets/54a0e580-eec8-4162-869b-2b38169ec56e" />
 
