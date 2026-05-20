@@ -6,10 +6,12 @@ It is built for targeted review, not mass application spam. It does not auto-app
 
 
 **Jobs / Radar dashboard**
+<img width="1756" height="1442" alt="radar-screenshot-20260519-184355" src="https://github.com/user-attachments/assets/54a0e580-eec8-4162-869b-2b38169ec56e" />
+
+
 <img width="1750" height="1184" alt="radar-screenshot-20260519-184413" src="https://github.com/user-attachments/assets/9866a1ca-a745-4ba8-aa43-064a8a1c546e" />
 
 
-<img width="1756" height="1442" alt="radar-screenshot-20260519-184355" src="https://github.com/user-attachments/assets/54a0e580-eec8-4162-869b-2b38169ec56e" />
 
 
 
