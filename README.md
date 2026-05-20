@@ -60,8 +60,9 @@ The archive and output files are intentionally ignored by Git because they are l
 Requires Python 3. No third-party Python packages are required.
 
 ```bash
-git clone <git clone https://github.com/andybahtwin-maker/Career-Opportunity-Radar.git>
-
+git clone https://github.com/andybahtwin-maker/Career-Opportunity-Radar.git
+cd Career-Opportunity-Radar
+python3 main.py test
 ```
 
 Review and edit the public company watchlist:
