@@ -115,6 +115,50 @@ def run_discovery() -> dict:
     }
 
 
+def run_radar_pipeline() -> dict:
+    errors = []
+    scan_result: dict = {}
+    discovery_result: dict = {}
+    digest_jobs: list[dict] = []
+
+    try:
+        scan_result = run_scan()
+    except Exception as exc:
+        errors.append(f"company_watchlist: {exc}")
+
+    try:
+        discovery_result = run_discovery()
+    except Exception as exc:
+        errors.append(f"discovery: {exc}")
+
+    try:
+        write_digest()
+        digest_jobs = top_digest_jobs()
+    except Exception as exc:
+        errors.append(f"digest: {exc}")
+
+    warnings = scan_result.get("warnings", []) + discovery_result.get("warnings", [])
+    total_jobs_scanned = scan_result.get("jobs_fetched", 0) + discovery_result.get("jobs_fetched", 0)
+    jobs_accepted = scan_result.get("jobs_accepted", 0) + discovery_result.get("jobs_accepted", 0)
+    jobs_rejected = scan_result.get("jobs_rejected", 0) + discovery_result.get("jobs_rejected", 0)
+
+    return {
+        "run_timestamp": datetime.now(timezone.utc).isoformat(),
+        "total_jobs_scanned": total_jobs_scanned,
+        "company_watchlist": scan_result,
+        "discovery": discovery_result,
+        "jobs_accepted": jobs_accepted,
+        "jobs_rejected": jobs_rejected,
+        "top_opportunities": [json_job(job) for job in digest_jobs],
+        "warnings": warnings,
+        "errors": errors,
+        "output_files": {
+            "jobs_archive": str(JOBS_ARCHIVE_FILE),
+            "daily_digest": str(DAILY_DIGEST_FILE),
+        },
+    }
+
+
 def scan() -> int:
     result = run_scan()
     print(f"Companies checked: {result['companies_checked']}")
@@ -144,36 +188,9 @@ def discover() -> int:
 
 
 def json_run() -> int:
-    errors = []
-    scan_result = {}
-    discovery_result = {}
-    digest_jobs = []
-
-    try:
-        scan_result = run_scan()
-        discovery_result = run_discovery()
-        write_digest()
-        digest_jobs = top_digest_jobs()
-    except Exception as exc:
-        errors.append(str(exc))
-
-    payload = {
-        "run_timestamp": datetime.now(timezone.utc).isoformat(),
-        "total_jobs_scanned": scan_result.get("jobs_fetched", 0) + discovery_result.get("jobs_fetched", 0),
-        "company_watchlist": scan_result,
-        "discovery": discovery_result,
-        "jobs_accepted": scan_result.get("jobs_accepted", 0) + discovery_result.get("jobs_accepted", 0),
-        "jobs_rejected": scan_result.get("jobs_rejected", 0) + discovery_result.get("jobs_rejected", 0),
-        "top_opportunities": [json_job(job) for job in digest_jobs],
-        "warnings": scan_result.get("warnings", []) + discovery_result.get("warnings", []),
-        "errors": errors,
-        "output_files": {
-            "jobs_archive": str(JOBS_ARCHIVE_FILE),
-            "daily_digest": str(DAILY_DIGEST_FILE),
-        },
-    }
+    payload = run_radar_pipeline()
     print(json.dumps(payload, indent=2, ensure_ascii=False))
-    return 1 if errors else 0
+    return 1 if payload["errors"] else 0
 
 
 def json_job(job: dict) -> dict:

@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 from config import DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
 from digest import digest_eligible, match_reasons, source_label, top_digest_jobs
+from main import run_radar_pipeline
 from storage import add_description_fields, load_archive, save_archive
 from utils import posting_age_days
 
@@ -101,10 +102,19 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/profile/save":
-            length = int(self.headers.get("Content-Length") or 0)
-            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            form = read_form(self)
             save_search_profile(first_value(form, "search_parameters"))
             self.redirect("/profile?saved=1")
+            return
+
+        if self.path == "/profile/run-radar":
+            form = read_form(self)
+            save_search_profile(first_value(form, "search_parameters"))
+            try:
+                result = run_radar_pipeline()
+            except Exception as exc:
+                result = {"errors": [str(exc)], "warnings": [], "total_jobs_scanned": 0, "jobs_accepted": 0, "jobs_rejected": 0}
+            self.write_html(render_profile_page(saved=True, run_result=result))
             return
 
         self.send_error(404)
@@ -129,6 +139,11 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
 def first_value(form: dict[str, list[str]], key: str) -> str:
     values = form.get(key) or []
     return values[0] if values else ""
+
+
+def read_form(handler: BaseHTTPRequestHandler) -> dict[str, list[str]]:
+    length = int(handler.headers.get("Content-Length") or 0)
+    return parse_qs(handler.rfile.read(length).decode("utf-8"))
 
 
 def toggle_applied(job_id: str = "", url: str = "") -> bool:
@@ -188,18 +203,42 @@ def render_jobs_page() -> str:
     return render_page("jobs", cards)
 
 
-def render_profile_page(saved: bool = False) -> str:
-    notice = '<div class="notice">Saved search parameters.</div>' if saved else ""
+def render_profile_page(saved: bool = False, run_result: dict | None = None) -> str:
+    notices = []
+    if saved:
+        notices.append('<div class="notice">Saved search parameters.</div>')
+    if run_result is not None:
+        errors = run_result.get("errors", [])
+        warnings = run_result.get("warnings", [])
+        if errors:
+            error_text = html.escape(errors[0], quote=True)
+            notices.append(
+                '<div class="notice error">Radar run failed: '
+                f"{error_text}"
+                f" (errors: {len(errors)}, warnings: {len(warnings)})"
+                "</div>"
+            )
+        else:
+            notices.append(
+                '<div class="notice success">'
+                f"Radar run complete. Scanned {run_result.get('total_jobs_scanned', 0)} jobs, "
+                f"accepted {run_result.get('jobs_accepted', 0)}, rejected {run_result.get('jobs_rejected', 0)}, "
+                f"warnings {len(warnings)}, errors 0."
+                ' <a href="/jobs">View Jobs / Radar</a>'
+                "</div>"
+            )
+    notice = "".join(notices)
     content = f"""
 <section class="profile-panel">
   {notice}
   <h2>Search Parameters</h2>
   <p class="help">Search parameters document the scoring and filtering intent used by the local rules. Discovery sources are configured separately in <code>data/discovery_sources.json</code>.</p>
-  <form method="post" action="/profile/save">
+  <form method="post" action="/profile/save" id="profile-form">
     <label for="search_parameters">Search Parameters</label>
     <textarea id="search_parameters" name="search_parameters" spellcheck="true">{escape(load_search_profile())}</textarea>
     <div class="actions">
       <button type="submit">Save</button>
+      <button type="submit" formaction="/profile/run-radar" data-run-radar-button>Run Radar Now</button>
     </div>
   </form>
 </section>"""
@@ -409,6 +448,24 @@ def render_page(active_tab: str, content: str) -> str:
       padding: 8px 10px;
       margin-bottom: 12px;
     }}
+    .notice.error {{
+      border-color: #f0a9a9;
+      background: #fff1f1;
+      color: #9f1239;
+    }}
+    .notice.success {{
+      border-color: #9ac89f;
+      background: #eef8ef;
+      color: #166534;
+    }}
+    .notice a {{
+      color: inherit;
+      font-weight: 700;
+    }}
+    button[disabled] {{
+      opacity: 0.65;
+      cursor: progress;
+    }}
   </style>
 </head>
 <body>
@@ -437,6 +494,14 @@ def render_page(active_tab: str, content: str) -> str:
       full.hidden = expanded;
       button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
       button.textContent = expanded ? 'Show more' : 'Show less';
+    }});
+    document.addEventListener('submit', function (event) {{
+      var button = event.submitter && event.submitter.matches('[data-run-radar-button]') ? event.submitter : null;
+      if (!button) {{
+        return;
+      }}
+      button.disabled = true;
+      button.textContent = 'Running...';
     }});
   </script>
 </body>

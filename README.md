@@ -159,7 +159,7 @@ python3 main.py enrich
 The local dashboard has two tabs:
 
 - Jobs / Radar: top digest jobs as cards with company, title, location, score, category, source label, posting age, match reasons, collapsed/expandable description excerpts, and a direct link to the job posting.
-- Profile: editable local search parameters stored in `data/search_profile.md`, plus a note that broader discovery is configured in `data/discovery_sources.json`.
+- Profile: editable local search parameters stored in `data/search_profile.md`, a `Run Radar Now` button, and a note that broader discovery is configured in `data/discovery_sources.json`.
 
 The Applied toggle writes immediately to `data/jobs_archive.json`. Applied jobs are visually muted and remain preserved in the archive.
 

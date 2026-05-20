@@ -23,11 +23,13 @@ The server binds only to `127.0.0.1` for local personal use. It does not require
 The dashboard has two tabs:
 
 - Jobs / Radar: reads jobs from `data/jobs_archive.json`. Each job card has an Applied toggle. Clicking the toggle immediately updates that job's `applied` value in `data/jobs_archive.json`, then reloads the dashboard.
-- Profile: edits search parameters stored in `data/search_profile.md` and notes that broader discovery sources are configured in `data/discovery_sources.json`.
+- Profile: edits search parameters stored in `data/search_profile.md`, includes a `Run Radar Now` button, and notes that broader discovery sources are configured in `data/discovery_sources.json`.
 
 Job descriptions are collapsed by default to keep the radar easy to scan. Use the Show more / Show less control on each card to expand or collapse the full excerpt inline without leaving the page.
 
 The Profile tab documents search intent used by the local scoring/filtering rules. Scoring still uses `scorers/rules.py`; discovery source keywords live in `data/discovery_sources.json`.
+
+The `Run Radar Now` button saves the current search parameters, reruns the local radar pipeline, refreshes `data/jobs_archive.json`, regenerates `output/daily_digest.md`, and shows a status message on the Profile tab.
 
 `data/search_profile.md` is committed as a generic public sample. Do not add private resume content to it before publishing.
 
