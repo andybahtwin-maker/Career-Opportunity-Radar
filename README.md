@@ -1,9 +1,6 @@
 # Career Opportunity Radar
-
 Career Opportunity Radar is a local-first Python tool that monitors selected company career pages, discovers broader public job listings, scores relevant roles, and produces a small daily digest of high-signal job opportunities.
-
 It is built for targeted review, not mass application spam. It does not auto-apply, send messages, scrape LinkedIn, bypass login walls, or scrape private accounts. It reads public ATS/company job pages and conservative public job APIs, stores a local archive, and gives you a concise workflow for deciding what is worth opening.
-
 
 **Jobs / Radar dashboard**
 <img width="1756" height="1442" alt="radar-screenshot-20260519-184355" src="https://github.com/user-attachments/assets/54a0e580-eec8-4162-869b-2b38169ec56e" />
@@ -11,21 +8,10 @@ It is built for targeted review, not mass application spam. It does not auto-app
 **Expanded job card with notes, applied date, and hide controls**
 <img width="1750" height="1184" alt="radar-screenshot-20260519-184413" src="https://github.com/user-attachments/assets/9866a1ca-a745-4ba8-aa43-064a8a1c546e" />
 
-
-
-
-
 **Profile tab for editable search parameters**
-
 <img width="1842" height="1430" alt="radar-screenshot-20260519-184745" src="https://github.com/user-attachments/assets/bfa082d4-77a4-404d-9bc0-20ca890baf9c" />
 
-
-
-
-
-
 ## Why I Built It
-
 Most job boards are noisy. I wanted a practical system that could watch a curated company list, preserve job history, surface strong matches, and make it easy to review opportunities from a browser or Markdown digest.
 
 The project is intentionally simple: Python standard library, local JSON files, transparent scoring rules, and optional n8n scheduling.
