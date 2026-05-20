@@ -142,7 +142,8 @@ def write_digest(path=DAILY_DIGEST_FILE) -> tuple[str, list[dict]]:
                     f"- Why it matched: {why}",
                     f"- Job posting: [Apply / view description]({url})",
                     f"- Raw URL: {url}",
-                    f"- [{'x' if job.get('applied') else ' '}] Applied",
+                    f"- Applied: {'yes' if job.get('applied') else 'no'}",
+                    f"- Applied date: {job.get('applied_date') or 'not set'}",
                     *description_lines,
                     "",
                 ]

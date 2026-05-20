@@ -7,8 +7,8 @@ from urllib.parse import parse_qs, urlparse
 from config import DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
 from digest import digest_eligible, match_reasons, source_label, top_digest_jobs
 from main import run_radar_pipeline
-from storage import add_description_fields, load_archive, save_archive
-from utils import posting_age_days
+from storage import add_description_fields, job_matches_reference, load_archive, save_archive, update_archive_job
+from utils import posting_age_days, today_iso
 
 
 HOST = "127.0.0.1"
@@ -83,7 +83,8 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path in {"/", "/jobs"}:
-            self.write_html(render_jobs_page())
+            show_hidden = "show_hidden=1" in parsed.query
+            self.write_html(render_jobs_page(show_hidden=show_hidden))
             return
         if parsed.path == "/profile":
             saved = "saved=1" in parsed.query
@@ -93,12 +94,28 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         if self.path == "/toggle-applied":
-            length = int(self.headers.get("Content-Length") or 0)
-            form = parse_qs(self.rfile.read(length).decode("utf-8"))
+            form = read_form(self)
             job_id = first_value(form, "id")
             url = first_value(form, "url")
             toggle_applied(job_id=job_id, url=url)
-            self.redirect("/jobs")
+            self.redirect(job_page_redirect(form))
+            return
+
+        if self.path == "/toggle-hidden":
+            form = read_form(self)
+            job_id = first_value(form, "id")
+            url = first_value(form, "url")
+            set_hidden(job_id=job_id, url=url, ignored=first_value(form, "ignored") != "0")
+            self.redirect(job_page_redirect(form))
+            return
+
+        if self.path == "/save-notes":
+            form = read_form(self)
+            job_id = first_value(form, "id")
+            url = first_value(form, "url")
+            notes = first_value(form, "notes")
+            update_archive_job(job_id=job_id, url=url, updates={"notes": notes})
+            self.redirect(job_page_redirect(form))
             return
 
         if self.path == "/profile/save":
@@ -141,6 +158,10 @@ def first_value(form: dict[str, list[str]], key: str) -> str:
     return values[0] if values else ""
 
 
+def job_page_redirect(form: dict[str, list[str]]) -> str:
+    return "/jobs?show_hidden=1" if first_value(form, "show_hidden") == "1" else "/jobs"
+
+
 def read_form(handler: BaseHTTPRequestHandler) -> dict[str, list[str]]:
     length = int(handler.headers.get("Content-Length") or 0)
     return parse_qs(handler.rfile.read(length).decode("utf-8"))
@@ -150,13 +171,24 @@ def toggle_applied(job_id: str = "", url: str = "") -> bool:
     jobs = load_archive()
     changed = False
     for job in jobs:
-        if (job_id and job.get("id") == job_id) or (url and job.get("url") == url):
-            job["applied"] = not bool(job.get("applied"))
-            changed = True
-            break
+        if not job_matches_reference(job, job_id=job_id, url=url):
+            continue
+        if job.get("applied"):
+            job["applied"] = False
+            job["applied_date"] = ""
+        else:
+            job["applied"] = True
+            if not str(job.get("applied_date") or "").strip():
+                job["applied_date"] = today_iso()
+        changed = True
+        break
     if changed:
         save_archive(jobs)
     return changed
+
+
+def set_hidden(job_id: str = "", url: str = "", ignored: bool = True) -> bool:
+    return update_archive_job(job_id=job_id, url=url, updates={"ignored": ignored})
 
 
 def load_search_profile() -> str:
@@ -170,37 +202,57 @@ def save_search_profile(content: str) -> None:
     SEARCH_PROFILE_FILE.write_text(content.rstrip() + "\n", encoding="utf-8")
 
 
-def dashboard_jobs() -> list[dict]:
+def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict]]:
     jobs = top_digest_jobs()
     seen = {job_key(job) for job in jobs}
     applied_jobs = []
+    hidden_jobs = []
 
     for job in load_archive():
         add_description_fields(job)
+        key = job_key(job)
+        if (
+            job.get("ignored")
+            and show_hidden
+            and key not in seen
+        ):
+            hidden_jobs.append(job)
+            seen.add(key)
+            continue
         if (
             job.get("applied")
             and not job.get("ignored")
             and job.get("fit_score", 0) >= DIGEST_MIN_SCORE
             and digest_eligible(job)
-            and job_key(job) not in seen
+            and key not in seen
         ):
             applied_jobs.append(job)
-            seen.add(job_key(job))
+            seen.add(key)
 
     applied_jobs.sort(key=lambda item: item.get("fit_score", 0), reverse=True)
-    return jobs + applied_jobs[:DIGEST_MAX_JOBS]
+    hidden_jobs.sort(key=lambda item: item.get("fit_score", 0), reverse=True)
+    return jobs + applied_jobs[:DIGEST_MAX_JOBS], hidden_jobs
 
 
 def job_key(job: dict) -> str:
     return str(job.get("id") or job.get("url") or f"{job.get('company')}|{job.get('title')}")
 
 
-def render_jobs_page() -> str:
-    jobs = dashboard_jobs()
-    cards = "\n".join(render_job_card(job) for job in jobs)
+def render_jobs_page(show_hidden: bool = False) -> str:
+    jobs, hidden_jobs = dashboard_jobs(show_hidden=show_hidden)
+    active_cards = "\n".join(render_job_card(job, show_hidden=show_hidden) for job in jobs)
+    hidden_cards = "\n".join(render_job_card(job, hidden=True, show_hidden=show_hidden) for job in hidden_jobs)
+    top_controls = (
+        '<div class="page-actions"><a class="text-link" href="/jobs?show_hidden=1">Show hidden jobs</a></div>'
+        if not show_hidden
+        else '<div class="page-actions"><a class="text-link" href="/jobs">Hide hidden jobs</a></div>'
+    )
+    cards = active_cards
+    if show_hidden:
+        cards += f'<section class="section-label">Hidden jobs</section>{hidden_cards}'
     if not cards:
         cards = '<section class="empty">No high-signal jobs found. Run <code>python3 main.py --json</code> to scan.</section>'
-    return render_page("jobs", cards)
+    return render_page("jobs", top_controls + cards)
 
 
 def render_profile_page(saved: bool = False, run_result: dict | None = None) -> str:
@@ -323,6 +375,9 @@ def render_page(active_tab: str, content: str) -> str:
       background: var(--applied);
       opacity: 0.78;
     }}
+    .card.hidden {{
+      opacity: 0.9;
+    }}
     .topline {{
       display: flex;
       justify-content: space-between;
@@ -391,6 +446,18 @@ def render_page(active_tab: str, content: str) -> str:
       gap: 10px;
       align-items: center;
     }}
+    .notes {{
+      margin: 12px 0 14px;
+    }}
+    .notes label {{
+      margin-top: 0;
+      margin-bottom: 6px;
+    }}
+    .notes textarea {{
+      min-height: 90px;
+      font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 10px;
+    }}
     a.button, button {{
       appearance: none;
       border: 1px solid var(--accent);
@@ -419,6 +486,22 @@ def render_page(active_tab: str, content: str) -> str:
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 18px;
+    }}
+    .page-actions {{
+      margin: 10px 0 4px;
+    }}
+    .text-link {{
+      color: var(--accent);
+      font-weight: 650;
+      text-decoration: none;
+    }}
+    .section-label {{
+      margin: 22px 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }}
     label {{
       display: block;
@@ -508,22 +591,28 @@ def render_page(active_tab: str, content: str) -> str:
 </html>"""
 
 
-def render_job_card(job: dict) -> str:
+def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) -> str:
     add_description_fields(job)
     applied = bool(job.get("applied"))
+    hidden = bool(job.get("ignored")) or hidden
     age = posting_age_days(job.get("date_posted"), job.get("first_seen"))
     age_text = "" if age is None else f'<span class="pill">{escape(str(age))} days old</span>'
+    applied_date = str(job.get("applied_date") or "")
     reasons = ", ".join(match_reasons(job)) or "matched scoring rules"
     applied_label = "Applied" if applied else "Not applied"
     applied_action = "Mark not applied" if applied else "Mark applied"
+    hide_action = "Unhide" if hidden else "Hide"
     url = str(job.get("url") or "")
     description = str(job.get("description_excerpt") or "No description excerpt available.")
+    notes = str(job.get("notes") or "")
     preview = description_preview(description)
     toggle = ""
     if preview != description:
         toggle = '<button class="link-button" type="button" data-description-toggle aria-expanded="false">Show more</button>'
 
-    return f"""<section class="card {'applied' if applied else ''}">
+    applied_date_text = f'<span class="pill">Applied on {escape(applied_date)}</span>' if applied and applied_date else ""
+
+    return f"""<section class="card {'applied' if applied else ''} {'hidden' if hidden else ''}">
   <div class="topline">
     <div>
       <h2>{escape(job.get("title"))}</h2>
@@ -537,6 +626,7 @@ def render_job_card(job: dict) -> str:
     <span class="pill">{escape(source_label(job))}</span>
     <span class="pill">{escape(applied_label)}</span>
     {age_text}
+    {applied_date_text}
   </div>
   <div class="why"><strong>Why it matched:</strong> {escape(reasons)}</div>
   <div class="description">
@@ -544,12 +634,32 @@ def render_job_card(job: dict) -> str:
     <div class="description-full" hidden>{escape(description)}</div>
     {toggle}
   </div>
+    <div class="notes">
+      <label for="notes-{escape(job_key(job))}">Notes</label>
+      <form method="post" action="/save-notes">
+        <input type="hidden" name="id" value="{escape(job.get("id"))}">
+        <input type="hidden" name="url" value="{escape(url)}">
+        <input type="hidden" name="show_hidden" value="{escape('1' if show_hidden else '')}">
+        <textarea id="notes-{escape(job_key(job))}" name="notes" spellcheck="true">{escape(notes)}</textarea>
+        <div class="actions">
+          <button type="submit">Save Notes</button>
+        </div>
+      </form>
+  </div>
   <div class="actions">
     <a class="button" href="{escape(url)}" target="_blank" rel="noopener noreferrer">Open job posting</a>
     <form method="post" action="/toggle-applied">
       <input type="hidden" name="id" value="{escape(job.get("id"))}">
       <input type="hidden" name="url" value="{escape(url)}">
+      <input type="hidden" name="show_hidden" value="{escape('1' if show_hidden else '')}">
       <button type="submit">{escape(applied_action)}</button>
+    </form>
+    <form method="post" action="/toggle-hidden">
+      <input type="hidden" name="id" value="{escape(job.get("id"))}">
+      <input type="hidden" name="url" value="{escape(url)}">
+      <input type="hidden" name="ignored" value="{escape('0' if hidden else '1')}">
+      <input type="hidden" name="show_hidden" value="{escape('1' if show_hidden else '')}">
+      <button type="submit">{escape(hide_action)}</button>
     </form>
   </div>
 </section>"""

@@ -205,6 +205,7 @@ def json_job(job: dict) -> dict:
         "score": job.get("fit_score", 0),
         "category": job.get("company_category") or "Not categorized",
         "source": source_label(job),
+        "applied_date": job.get("applied_date", ""),
         "why_it_matched": match_reasons(job) or ["matched scoring rules"],
     }
 

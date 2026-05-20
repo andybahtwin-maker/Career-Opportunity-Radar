@@ -33,7 +33,9 @@ The `Run Radar Now` button saves the current search parameters, reruns the local
 
 `data/search_profile.md` is committed as a generic public sample. Do not add private resume content to it before publishing.
 
-The job cards label whether each role came from the curated company watchlist or a broader discovery source, and they link directly to the original ATS, company, or public job-board posting. No applications are submitted automatically. The UI uses only local Python, HTML, CSS, and lightweight vanilla JavaScript.
+The job cards label whether each role came from the curated company watchlist or a broader discovery source, and they link directly to the original ATS, company, or public job-board posting. Each card also includes local notes, hide/unhide controls, and applied-date tracking. No applications are submitted automatically. The UI uses only local Python, HTML, CSS, and lightweight vanilla JavaScript.
+
+The notes, hidden state, applied flag, and applied date are all saved in `data/jobs_archive.json`. That file is ignored by Git and is treated as local run state.
 
 Broader discovery can be run separately:
 

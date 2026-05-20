@@ -40,6 +40,28 @@ def save_archive(jobs: list[dict]) -> None:
     save_json(JOBS_ARCHIVE_FILE, jobs)
 
 
+def job_matches_reference(job: dict, job_id: str = "", url: str = "") -> bool:
+    return bool(
+        (job_id and job.get("id") == job_id)
+        or (url and job.get("url") == url)
+    )
+
+
+def update_archive_job(job_id: str = "", url: str = "", updates: dict | None = None) -> bool:
+    jobs = load_archive()
+    changed = False
+    updates = updates or {}
+    for job in jobs:
+        if not job_matches_reference(job, job_id=job_id, url=url):
+            continue
+        job.update(updates)
+        changed = True
+        break
+    if changed:
+        save_archive(jobs)
+    return changed
+
+
 def sync_applied_from_digest(
     digest_path=DAILY_DIGEST_FILE,
     archive_path=JOBS_ARCHIVE_FILE,
@@ -68,6 +90,8 @@ def sync_applied_from_digest(
             continue
         if not job.get("applied"):
             job["applied"] = True
+            if not str(job.get("applied_date") or "").strip():
+                job["applied_date"] = today_iso()
             updated_count += 1
 
     save_json(archive_path, jobs)
@@ -175,6 +199,7 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             normalized["ignored"] = bool(previous.get("ignored", False))
             normalized["applied"] = bool(previous.get("applied", False))
             normalized["notes"] = previous.get("notes", "")
+            normalized["applied_date"] = previous.get("applied_date", "")
         else:
             new_count += 1
 

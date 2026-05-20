@@ -35,6 +35,7 @@ The project is intentionally simple: Python standard library, local JSON files, 
 - Writes a Markdown digest with clickable company/ATS links.
 - Serves a local web dashboard for reviewing top opportunities from both curated companies and broader discovery sources.
 - Lets you mark jobs as applied from the dashboard or Markdown workflow.
+- Lets you add per-job notes, hide jobs that are not a fit, and track applied dates locally.
 - Keeps job links direct to the original ATS or company application page.
 - Can be launched from Linux desktop shortcuts for local use.
 
@@ -163,6 +164,8 @@ The local dashboard has two tabs:
 
 The Applied toggle writes immediately to `data/jobs_archive.json`. Applied jobs are visually muted and remain preserved in the archive.
 
+Each job card also includes local notes, a Hide / Unhide control, and applied-date tracking. Those fields are stored in `data/jobs_archive.json` and survive future scans and discovery runs.
+
 Job descriptions start collapsed for easier scanning. A lightweight inline vanilla JavaScript toggle expands or collapses the full excerpt without reloading the page.
 
 The Profile tab documents search intent used by the local rules. Scoring still uses the static rules in `scorers/rules.py`, and discovery source keywords live in `data/discovery_sources.json`.
@@ -198,6 +201,7 @@ Each job includes:
 - score and category
 - source label
 - why it matched
+- applied state and applied date
 - a direct Markdown link to the company/ATS posting
 - raw URL for automation/sync
 - applied checkbox
@@ -210,6 +214,7 @@ python3 main.py sync-applied
 ```
 
 This sync is conservative: checked boxes mark archive jobs as applied, but unchecked boxes do not clear existing applied status.
+Ignored jobs stay in the local archive but do not appear in the normal digest.
 
 ## n8n Scheduled Automation
 
@@ -322,6 +327,7 @@ This project demonstrates Python automation, ATS/job-board scraping, structured 
 - `data/search_profile.md` is committed only as generic sample search parameters.
 - Dashboard binds to `127.0.0.1`.
 - Public repo should include code and public company configuration only.
+- Job notes, hide state, and applied dates live only in the ignored local archive file.
 
 ## Roadmap / Planned Features
 
