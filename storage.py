@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 
 from config import COMPANIES_FILE, DAILY_DIGEST_FILE, JOBS_ARCHIVE_FILE
+from realism import evaluate_job
 from scorers import score_job
+from targeting import profile_hash
 from utils import extract_readable_text, load_json, safe_fetch_text, save_json, stable_job_id, strip_html, today_iso
 
 
@@ -38,6 +40,39 @@ def load_archive() -> list[dict]:
 
 def save_archive(jobs: list[dict]) -> None:
     save_json(JOBS_ARCHIVE_FILE, jobs)
+
+
+def rescore_jobs(jobs: list[dict]) -> list[dict]:
+    fingerprint = profile_hash()
+    rescored = []
+    for job in jobs:
+        add_description_fields(job)
+        score, tags = score_job(job)
+        realism = evaluate_job(job)
+        job["fit_score"] = score
+        job["tags"] = tags
+        job["domain_barrier"] = realism["domain_barrier"]
+        job["domain_matches"] = realism["domain_matches"]
+        job["transferability_score"] = realism["transferability_score"]
+        job["hireability_score"] = realism["hireability_score"]
+        job["practical_fit"] = realism["practical_fit"]
+        job["practical_fit_label"] = realism["practical_fit_label"]
+        job["vehicle_barrier"] = realism["vehicle_barrier"]
+        job["commission_only_risk"] = realism["commission_only_risk"]
+        job["base_pay_signal"] = realism["base_pay_signal"]
+        job["denver_metro_signal"] = realism["denver_metro_signal"]
+        job["localizable_signal"] = realism["localizable_signal"]
+        job["remote_only_signal"] = realism["remote_only_signal"]
+        job["remote_saas_signal"] = realism["remote_saas_signal"]
+        job["practical_fit_rank"] = realism["practical_fit_rank"]
+        job["realism_notes"] = realism["realism_notes"]
+        job["target_profile_hash"] = fingerprint
+        rescored.append(job)
+    return sorted(rescored, key=job_rank_key)
+
+
+def job_rank_key(job: dict) -> tuple[int, int]:
+    return int(job.get("practical_fit_rank", 5)), -int(job.get("fit_score", 0))
 
 
 def job_matches_reference(job: dict, job_id: str = "", url: str = "") -> bool:
@@ -187,6 +222,22 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "raw_description": raw_description,
             "fit_score": score,
             "tags": tags,
+            "domain_barrier": "",
+            "domain_matches": [],
+            "transferability_score": 0,
+            "hireability_score": 0,
+            "practical_fit": "",
+            "practical_fit_label": "",
+            "vehicle_barrier": False,
+            "commission_only_risk": False,
+            "base_pay_signal": False,
+            "denver_metro_signal": False,
+            "localizable_signal": False,
+            "remote_only_signal": False,
+            "remote_saas_signal": False,
+            "practical_fit_rank": 5,
+            "realism_notes": [],
+            "target_profile_hash": profile_hash(),
             "ignored": False,
             "applied": False,
         }
@@ -213,7 +264,7 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             by_url[normalized.get("url")] = job_id
         by_title_company[title_company_key] = job_id
 
-    return sorted(by_id.values(), key=lambda item: item.get("fit_score", 0), reverse=True), new_count
+    return rescore_jobs(list(by_id.values())), new_count
 
 
 def dedupe_title_company(jobs: list[dict]) -> list[dict]:

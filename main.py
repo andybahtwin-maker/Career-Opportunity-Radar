@@ -9,7 +9,9 @@ from config import COMPANIES_FILE, DAILY_DIGEST_FILE, DIGEST_MIN_SCORE, DISCOVER
 from digest import digest_eligible, match_reasons, top_digest_jobs, write_digest
 from fetchers import FETCHERS
 from fetchers.discovery import fetch_discovery_sources, load_discovery_sources
+from realism import evaluate_job
 from scorers import score_job
+from targeting import discovery_keywords, is_hard_excluded, is_local_or_localizable, job_text, matching_required_positive_count, profile_hash
 from storage import (
     add_description_fields,
     enrich_job_descriptions,
@@ -18,6 +20,7 @@ from storage import (
     load_companies,
     merge_jobs,
     normalized_title_company,
+    rescore_jobs,
     save_archive,
     sync_applied_from_digest,
 )
@@ -43,11 +46,25 @@ def run_scan() -> dict:
             job["company_priority"] = company.get("priority", 0)
             job["source_kind"] = "company_watchlist"
             job["source_name"] = company.get("company_name", "")
+            company_context = " ".join(
+                str(company.get(key, ""))
+                for key in ("category", "notes", "careers_url")
+            )
+            if not str(job.get("location") or "").strip() and any(
+                term in company_context.lower()
+                for term in ("denver", "colorado", "co.", "colorado-based", "colorado ")
+            ):
+                job["location"] = "Denver / Colorado"
+            if company.get("notes"):
+                job["raw_description"] = f"{job.get('raw_description', '')} {company.get('notes', '')}".strip()
         fetched_jobs.extend(jobs)
         errors.extend(fetch_errors)
 
+    total_fetched = len(fetched_jobs)
     _, description_warnings = enrich_job_descriptions(fetched_jobs)
     errors.extend(description_warnings)
+    fetched_jobs, filter_warnings = hard_filter_fetched_jobs(fetched_jobs, "company_watchlist")
+    errors.extend(filter_warnings)
 
     merged, new_count = merge_jobs(archive, fetched_jobs)
     save_archive(merged)
@@ -69,9 +86,9 @@ def run_scan() -> dict:
 
     return {
         "companies_checked": len(companies),
-        "jobs_fetched": len(fetched_jobs),
+        "jobs_fetched": total_fetched,
         "jobs_accepted": len(accepted_jobs),
-        "jobs_rejected": max(len(fetched_jobs) - len(accepted_jobs), 0),
+        "jobs_rejected": max(total_fetched - len(accepted_jobs), 0),
         "new_jobs_added": new_count,
         "archive_size": len(merged),
         "warnings": errors,
@@ -82,9 +99,12 @@ def run_discovery() -> dict:
     sources = [source for source in load_discovery_sources() if source.get("enabled", True)]
     archive = load_archive()
     fetched_jobs, errors = fetch_discovery_sources(sources)
+    total_fetched = len(fetched_jobs)
 
     _, description_warnings = enrich_job_descriptions(fetched_jobs)
     errors.extend(description_warnings)
+    fetched_jobs, filter_warnings = hard_filter_fetched_jobs(fetched_jobs, "discovery")
+    errors.extend(filter_warnings)
 
     merged, new_count = merge_jobs(archive, fetched_jobs)
     save_archive(merged)
@@ -106,13 +126,56 @@ def run_discovery() -> dict:
 
     return {
         "sources_checked": len(sources),
-        "jobs_fetched": len(fetched_jobs),
+        "target_profile_hash": profile_hash(),
+        "profile_query_keywords": discovery_keywords(),
+        "jobs_fetched": total_fetched,
         "jobs_accepted": len(accepted_jobs),
-        "jobs_rejected": max(len(fetched_jobs) - len(accepted_jobs), 0),
+        "jobs_rejected": max(total_fetched - len(accepted_jobs), 0),
         "new_jobs_added": new_count,
         "archive_size": len(merged),
         "warnings": errors,
     }
+
+
+def hard_filter_fetched_jobs(jobs: list[dict], label: str) -> tuple[list[dict], list[str]]:
+    kept = []
+    rejected = {
+        "hard_excluded": 0,
+        "vehicle_barrier": 0,
+        "commission_only_risk": 0,
+        "not_local": 0,
+        "weak_required_signals": 0,
+        "low_realism": 0,
+    }
+    for job in jobs:
+        realism = evaluate_job(job)
+        if realism["vehicle_barrier"]:
+            rejected["vehicle_barrier"] = rejected.get("vehicle_barrier", 0) + 1
+            continue
+        if realism["commission_only_risk"]:
+            rejected["commission_only_risk"] = rejected.get("commission_only_risk", 0) + 1
+            continue
+        hard_excluded, _ = is_hard_excluded(job)
+        if hard_excluded:
+            rejected["hard_excluded"] += 1
+            continue
+        if realism["practical_fit"] in {"Semantic Match Only", "Likely ATS Reject", "Not a Fit"}:
+            rejected["low_realism"] += 1
+            continue
+        if not is_local_or_localizable(job):
+            rejected["not_local"] += 1
+            continue
+        local_fit_labels = {"Strong Construction/Design Sales Fit", "Strong Local Fit", "Realistic Local Sales Fit"}
+        if matching_required_positive_count(job_text(job)) < 1 and realism["practical_fit_label"] not in local_fit_labels:
+            rejected["weak_required_signals"] += 1
+            continue
+        kept.append(job)
+    warnings = [
+        f"{label}: hard filter rejected {count} jobs for {reason.replace('_', ' ')}"
+        for reason, count in rejected.items()
+        if count
+    ]
+    return kept, warnings
 
 
 def run_radar_pipeline() -> dict:
@@ -203,6 +266,19 @@ def json_job(job: dict) -> dict:
         "description_word_count": job.get("description_word_count", 0),
         "has_description": bool(job.get("has_description")),
         "score": job.get("fit_score", 0),
+        "practical_fit": job.get("practical_fit", ""),
+        "practical_fit_label": job.get("practical_fit_label") or job.get("practical_fit", ""),
+        "domain_barrier": job.get("domain_barrier", ""),
+        "transferability_score": job.get("transferability_score", 0),
+        "hireability_score": job.get("hireability_score", 0),
+        "vehicle_barrier": bool(job.get("vehicle_barrier")),
+        "commission_only_risk": bool(job.get("commission_only_risk")),
+        "base_pay_signal": bool(job.get("base_pay_signal")),
+        "denver_metro_signal": bool(job.get("denver_metro_signal")),
+        "localizable_signal": bool(job.get("localizable_signal")),
+        "remote_only_signal": bool(job.get("remote_only_signal")),
+        "remote_saas_signal": bool(job.get("remote_saas_signal")),
+        "realism_notes": job.get("realism_notes", []),
         "category": job.get("company_category") or "Not categorized",
         "source": source_label(job),
         "applied_date": job.get("applied_date", ""),
@@ -249,12 +325,8 @@ def digest() -> int:
 def enrich() -> int:
     jobs = load_archive()
     enriched_count, warnings = enrich_job_descriptions(jobs)
-    for job in jobs:
-        add_description_fields(job)
-        score, tags = score_job(job)
-        job["fit_score"] = score
-        job["tags"] = tags
-    save_archive(sorted(jobs, key=lambda item: item.get("fit_score", 0), reverse=True))
+    jobs = rescore_jobs(jobs)
+    save_archive(jobs)
 
     print(f"Archive jobs checked: {len(jobs)}")
     print(f"Descriptions enriched: {enriched_count}")

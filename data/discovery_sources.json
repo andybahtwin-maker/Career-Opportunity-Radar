@@ -5,21 +5,33 @@
     "source_type": "himalayas_api",
     "search_url_template": "https://himalayas.app/jobs/api/search?q={keyword}&country=US&sort=recent",
     "keywords": [
-      "sales engineer",
-      "solutions consultant",
-      "account executive",
-      "customer success manager",
-      "implementation consultant"
+      "design consultant Denver",
+      "showroom sales consultant Denver",
+      "kitchen bath designer Denver",
+      "flooring sales Denver",
+      "tile sales Denver",
+      "cabinet designer Denver",
+      "countertop sales Denver",
+      "window door sales Denver",
+      "building materials sales Denver",
+      "contractor sales Denver",
+      "commercial interiors project coordinator Denver",
+      "architectural products sales Denver",
+      "inside sales building materials Denver",
+      "sales estimator construction Denver",
+      "solar sales consultant base Denver"
     ],
     "location_terms": [
       "US"
     ],
+    "use_profile_keywords": true,
+    "use_profile_locations": false,
     "max_results_per_keyword": 20,
     "notes": "Public JSON search endpoint documented by Himalayas. No authentication required. Keep request volume low and link back to the original posting URL."
   },
   {
     "name": "RemoteJobs.org API",
-    "enabled": true,
+    "enabled": false,
     "source_type": "remotejobs_api",
     "search_url_template": "https://remotejobs.org/api/v1/jobs?q={keyword}&limit={limit}",
     "keywords": [
@@ -32,7 +44,9 @@
     "location_terms": [
       "Remote"
     ],
+    "use_profile_keywords": true,
+    "use_profile_locations": false,
     "max_results_per_keyword": 20,
-    "notes": "Public JSON endpoint documented by RemoteJobs.org. No authentication required. RemoteJobs.org requests visible attribution if displaying its listings."
+    "notes": "Disabled for local-first targeting because it is remote-first and tended to dominate results. Re-enable only for a deliberate remote search."
   }
 ]

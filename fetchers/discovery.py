@@ -3,6 +3,7 @@ from __future__ import annotations
 from urllib.parse import quote_plus
 
 from config import DISCOVERY_SOURCES_FILE
+from targeting import discovery_keywords, discovery_locations
 from utils import clean_text, load_json, safe_fetch_json, strip_html
 
 
@@ -36,17 +37,25 @@ def fetch_keyword_source(source: dict, parser) -> tuple[list[dict], list[str]]:
     name = source.get("name", "Unnamed source")
     template = source.get("search_url_template") or ""
     keywords = source.get("keywords") or [""]
+    if source.get("use_profile_keywords", True):
+        keywords = dedupe([*discovery_keywords(), *keywords])
     location_terms = source.get("location_terms") or [""]
+    if source.get("use_profile_locations", True):
+        location_terms = dedupe([*discovery_locations(), *location_terms])
     limit = int(source.get("max_results_per_keyword") or 20)
 
     jobs = []
     errors = []
+    seen_urls = set()
     for keyword in keywords:
         for location in location_terms:
             url = build_search_url(template, keyword, location, limit)
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
             data, error = safe_fetch_json(url)
             if error:
-                errors.append(f"{name}: {keyword or 'all jobs'}: {error}")
+                errors.append(f"{name}: {keyword or 'all jobs'} in {location or 'anywhere'}: {error}")
                 continue
             jobs.extend(parser(data, source, keyword, location))
     return jobs, errors
@@ -74,6 +83,8 @@ def parse_himalayas_jobs(data, source: dict, keyword: str, location: str) -> lis
         url = item.get("applicationLink") or item.get("url") or item.get("jobUrl") or ""
         description = strip_html(item.get("description") or item.get("excerpt") or "")
         location_text = location_from_himalayas(item)
+        if "denver" in keyword.lower() and "denver" not in location_text.lower():
+            location_text = f"Denver / {location_text}"
         if not title or not company or not url:
             continue
         jobs.append(
@@ -81,7 +92,7 @@ def parse_himalayas_jobs(data, source: dict, keyword: str, location: str) -> lis
                 "company": company,
                 "title": title,
                 "location": location_text,
-                "remote": True,
+                "remote": is_remote_location(location_text),
                 "url": url,
                 "external_id": str(item.get("guid") or url),
                 "date_posted": item.get("pubDate") or "",
@@ -119,6 +130,8 @@ def parse_remotejobs_jobs(data, source: dict, keyword: str, location: str) -> li
         url = item.get("apply_url") or item.get("url") or ""
         description = strip_html(item.get("description") or "")
         location_text = clean_text(item.get("location") or location or "Remote")
+        if "denver" in keyword.lower() and "denver" not in location_text.lower():
+            location_text = f"Denver / {location_text}"
         if not title or not company or not url:
             continue
         jobs.append(
@@ -126,7 +139,7 @@ def parse_remotejobs_jobs(data, source: dict, keyword: str, location: str) -> li
                 "company": company,
                 "title": title,
                 "location": location_text,
-                "remote": "remote" in location_text.lower() or True,
+                "remote": is_remote_location(location_text),
                 "url": url,
                 "external_id": str(item.get("id") or url),
                 "date_posted": item.get("posted_at") or "",
@@ -138,6 +151,10 @@ def parse_remotejobs_jobs(data, source: dict, keyword: str, location: str) -> li
             }
         )
     return jobs
+
+
+def is_remote_location(location_text: str) -> bool:
+    return "remote" in str(location_text or "").lower()
 
 
 def extract_items(data, keys: tuple[str, ...]) -> list:
@@ -170,4 +187,16 @@ def dedupe_discovered_jobs(jobs: list[dict]) -> list[dict]:
             seen_urls.add(url)
         seen_title_company.add(title_company)
         result.append(job)
+    return result
+
+
+def dedupe(values) -> list[str]:
+    seen = set()
+    result = []
+    for value in values:
+        value = str(value or "").strip()
+        if not value or value.lower() in seen:
+            continue
+        seen.add(value.lower())
+        result.append(value)
     return result

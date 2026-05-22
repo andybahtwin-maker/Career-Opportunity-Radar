@@ -3,12 +3,13 @@ from __future__ import annotations
 import textwrap
 
 from config import DAILY_DIGEST_FILE, DIGEST_MAX_JOBS, DIGEST_MIN_SCORE
-from storage import add_description_fields, dedupe_title_company, load_archive
+from storage import add_description_fields, dedupe_title_company, job_rank_key, load_archive, rescore_jobs
+from targeting import is_hard_excluded, is_local_or_localizable, job_text, matching_required_positive_count
 from utils import posting_age_days, today_iso
 
 
 def top_digest_jobs() -> list[dict]:
-    archive = load_archive()
+    archive = rescore_jobs(load_archive())
     for job in archive:
         add_description_fields(job)
     jobs = [
@@ -19,32 +20,57 @@ def top_digest_jobs() -> list[dict]:
         and job.get("fit_score", 0) >= DIGEST_MIN_SCORE
         and digest_eligible(job)
     ]
-    jobs = dedupe_title_company(jobs)
-    jobs.sort(key=lambda item: item.get("fit_score", 0), reverse=True)
+    jobs = diversify_jobs(dedupe_title_company(jobs))
     return jobs[:DIGEST_MAX_JOBS]
 
 
 TARGET_TITLE_TERMS = (
-    "account executive",
     "account manager",
-    "construction success manager",
+    "architectural products sales",
+    "building materials sales",
+    "cabinet designer",
+    "client success manager",
+    "commercial interiors sales",
+    "commercial sales representative",
+    "contractor sales",
+    "countertop sales",
+    "design consultant",
+    "estimator",
+    "flooring sales",
+    "glass sales",
+    "glazing sales",
+    "inside sales",
+    "kitchen and bath designer",
+    "contractor sales",
     "customer success manager",
-    "director of customer success",
-    "engagement manager",
+    "customer onboarding specialist",
+    "field operations consultant",
     "implementation",
-    "sales engineer",
-    "solution engineer",
-    "solutions engineer",
-    "solution consultant",
+    "operations coordinator",
+    "product specialist",
+    "project consultant",
+    "project coordinator",
+    "sales representative",
+    "sales consultant",
+    "sales estimator",
+    "showroom",
+    "showroom consultant",
+    "showroom sales consultant",
+    "solar sales consultant",
     "solutions consultant",
-    "strategic account executive",
-    "technical account manager",
+    "territory sales representative",
+    "tile sales",
+    "trade sales representative",
+    "window and door sales",
 )
 
 EXCLUDED_DIGEST_TITLE_TERMS = (
     "backend",
+    "director",
     "demand generation",
     "devops",
+    "enterprise",
+    "enterprise account executive",
     "engineer, 3d",
     "marketing",
     "procurement",
@@ -54,8 +80,11 @@ EXCLUDED_DIGEST_TITLE_TERMS = (
     "sales development",
     "sdr",
     "security",
+    "senior sales engineer",
     "social media",
     "software engineer",
+    "strategic account executive",
+    "vp",
 )
 
 US_FRIENDLY_LOCATION_TERMS = (
@@ -103,15 +132,59 @@ NON_US_LOCATION_TERMS = (
 def digest_eligible(job: dict) -> bool:
     title = str(job.get("title", "")).lower()
     location = str(job.get("location", "")).lower()
+    hard_excluded, _ = is_hard_excluded(job)
+    if hard_excluded:
+        return False
+    if job.get("practical_fit") in {
+        "Semantic Match Only",
+        "Likely ATS Reject",
+        "Not a Fit",
+        "Vehicle Barrier",
+        "Commission-Only Risk",
+    }:
+        return False
     if any(term in title for term in EXCLUDED_DIGEST_TITLE_TERMS):
         return False
     if not any(term in title for term in TARGET_TITLE_TERMS):
+        return False
+    if not is_local_or_localizable(job):
+        return False
+    local_fit_labels = {"Strong Construction/Design Sales Fit", "Strong Local Fit", "Realistic Local Sales Fit"}
+    if matching_required_positive_count(job_text(job)) < 2 and job.get("practical_fit_label") not in local_fit_labels:
         return False
     if any(term in location for term in NON_US_LOCATION_TERMS) and not any(
         term in location for term in ("united states", "usa")
     ):
         return False
     return not location or any(term in location for term in US_FRIENDLY_LOCATION_TERMS)
+
+
+def diversify_jobs(jobs: list[dict]) -> list[dict]:
+    ranked = sorted(jobs, key=job_rank_key)
+    selected = []
+    company_counts: dict[str, int] = {}
+    source_counts: dict[str, int] = {}
+    for job in ranked:
+        company = str(job.get("company") or "").lower()
+        source = str(job.get("source_kind") or job.get("source_name") or "").lower()
+        if company_counts.get(company, 0) >= 1:
+            continue
+        if source == "company_watchlist" and source_counts.get(source, 0) >= 4:
+            continue
+        selected.append(job)
+        company_counts[company] = company_counts.get(company, 0) + 1
+        source_counts[source] = source_counts.get(source, 0) + 1
+        if len(selected) >= DIGEST_MAX_JOBS:
+            return selected
+
+    selected_ids = {job.get("id") for job in selected}
+    for job in ranked:
+        if job.get("id") in selected_ids:
+            continue
+        selected.append(job)
+        if len(selected) >= DIGEST_MAX_JOBS:
+            break
+    return selected
 
 
 def write_digest(path=DAILY_DIGEST_FILE) -> tuple[str, list[dict]]:
@@ -135,6 +208,13 @@ def write_digest(path=DAILY_DIGEST_FILE) -> tuple[str, list[dict]]:
                     f"## {index}. {job.get('company')} - {job.get('title')}",
                     "",
                     f"- Score: {job.get('fit_score')}",
+                    f"- Practical fit: {job.get('practical_fit_label') or job.get('practical_fit') or 'Not classified'}",
+                    f"- Domain barrier: {job.get('domain_barrier') or 'unknown'}",
+                    f"- Transferability score: {job.get('transferability_score', 0)}",
+                    f"- Hireability score: {job.get('hireability_score', 0)}",
+                    f"- Vehicle barrier: {'yes' if job.get('vehicle_barrier') else 'no'}",
+                    f"- Commission-only risk: {'yes' if job.get('commission_only_risk') else 'no'}",
+                    f"- Base/stable pay signal: {'yes' if job.get('base_pay_signal') else 'no'}",
                     f"- Category: {job.get('company_category') or 'Not categorized'}",
                     f"- Source: {source_label(job)}",
                     f"- Location: {job.get('location') or 'Not listed'}",
@@ -167,6 +247,10 @@ def match_reasons(job: dict) -> list[str]:
     category = job.get("company_category")
     if category:
         reasons.append(category.replace("_", " "))
+    if job.get("practical_fit_label") or job.get("practical_fit"):
+        reasons.append(job.get("practical_fit_label") or job.get("practical_fit"))
+    if job.get("domain_barrier"):
+        reasons.append(f"{job.get('domain_barrier')} domain barrier")
     if any(term in tags for term in ("construction", "contractor", "aec")):
         reasons.append("construction/AEC domain")
     if any(term in tags for term in ("field operations", "workflow")):
@@ -175,10 +259,16 @@ def match_reasons(job: dict) -> list[str]:
         reasons.append("technical demos/presentations")
     if any(term in tags for term in ("customer-facing", "customer facing", "customer success")):
         reasons.append("customer-facing")
-    if any(term in tags for term in ("remote", "hybrid", "denver")):
-        reasons.append("remote/hybrid/Denver-friendly")
+    if any(term in tags for term in ("local/localizable", "hybrid", "denver", "target metro")):
+        reasons.append("local/Denver-friendly")
+    if "remote saas stretch" in tags or job.get("remote_saas_signal"):
+        reasons.append("remote SaaS stretch")
+    if job.get("base_pay_signal"):
+        reasons.append("base/stable pay signal")
     if any(term in tags for term in ("account executive", "sales engineer", "solutions consultant", "implementation")):
         reasons.append("target role family")
+    for note in job.get("realism_notes", [])[:2]:
+        reasons.append(note)
     return dedupe(reasons)[:6]
 
 

@@ -26,7 +26,7 @@ The project is intentionally simple: Python standard library, local JSON files, 
 - Stores normalized job records locally.
 - Dedupes discovered and curated jobs by URL first, then by company/title.
 - Pulls job descriptions when available and extracts readable page text as a fallback.
-- Scores jobs with transparent keyword/rule-based logic.
+- Scores jobs with transparent keyword/rule-based logic and practical-fit labels.
 - Writes a Markdown digest with clickable company/ATS links.
 - Serves a local web dashboard for reviewing top opportunities from both curated companies and broader discovery sources.
 - Lets you mark jobs as applied from the dashboard or Markdown workflow.
@@ -36,22 +36,25 @@ The project is intentionally simple: Python standard library, local JSON files, 
 
 ## Recent Updates
 
-- Profile tab for editing local search parameters.
+- Profile tab for editing local search parameters and a private candidate profile summary.
 - Editable `data/search_profile.md` sample profile.
+- Private `data/candidate_profile.md` candidate summary with a safe committed `data/candidate_profile.example.md` template.
 - Expandable job descriptions for a cleaner Jobs / Radar dashboard.
 - Discovery sources in `data/discovery_sources.json`.
 - Source labels in the digest and local dashboard.
+- Local-first Denver/construction/design-sales scoring that pushes remote SaaS stretch roles below realistic local fits.
 
 ## How It Works
 
 1. `data/companies.json` defines the curated public company watchlist and ATS configuration.
 2. `data/discovery_sources.json` defines broader public discovery sources.
-3. `data/search_profile.md` stores editable, generic search parameters for the local Profile tab.
-4. Fetchers collect public job postings and descriptions.
-5. `storage.py` merges jobs into `data/jobs_archive.json`, deduping by URL first and then company/title.
-6. `scorers/rules.py` assigns a fit score and match tags.
-7. `digest.py` writes `output/daily_digest.md`.
-8. `web_ui.py` serves a local dashboard at `http://127.0.0.1:8787`.
+3. `data/search_profile.md` stores editable search parameters for the local Profile tab.
+4. `data/candidate_profile.md` stores the local private Candidate Profile / Resume Summary; `data/candidate_profile.example.md` is the safe public template.
+5. Fetchers collect public job postings and descriptions.
+6. `storage.py` merges jobs into `data/jobs_archive.json`, deduping by URL first and then company/title.
+7. `scorers/rules.py` assigns a fit score and match tags.
+8. `digest.py` writes `output/daily_digest.md`.
+9. `web_ui.py` serves a local dashboard at `http://127.0.0.1:8787`.
 
 The archive and output files are intentionally ignored by Git because they are local run state.
 
@@ -87,11 +90,12 @@ This creates ignored local run-state files such as `data/jobs_archive.json` and 
 
 ## GitHub Setup
 
-This repository is intended to keep source code, public company configuration, and generic sample search parameters in Git while excluding local run state.
+This repository is intended to keep source code, public company configuration, generic search parameters, and the safe candidate-profile template in Git while excluding private candidate content and local run state.
 
 Before publishing your own fork or copy, confirm `.gitignore` excludes:
 
 - `data/jobs_archive.json`
+- `data/candidate_profile.md`
 - `output/`
 - `.env`
 - backups
@@ -155,7 +159,7 @@ python3 main.py enrich
 The local dashboard has two tabs:
 
 - Jobs / Radar: top digest jobs as cards with company, title, location, score, category, source label, posting age, match reasons, collapsed/expandable description excerpts, and a direct link to the job posting.
-- Profile: editable local search parameters stored in `data/search_profile.md`, a `Run Radar Now` button, and a note that broader discovery is configured in `data/discovery_sources.json`.
+- Profile: editable Search Parameters in `data/search_profile.md`, a private Candidate Profile / Resume Summary in `data/candidate_profile.md`, a `Run Radar Now` button, and a note that broader discovery is configured in `data/discovery_sources.json`.
 
 The Applied toggle writes immediately to `data/jobs_archive.json`. Applied jobs are visually muted and remain preserved in the archive.
 
@@ -163,7 +167,7 @@ Each job card also includes local notes, a Hide / Unhide control, and applied-da
 
 Job descriptions start collapsed for easier scanning. A lightweight inline vanilla JavaScript toggle expands or collapses the full excerpt without reloading the page.
 
-The Profile tab documents search intent used by the local rules. Scoring still uses the static rules in `scorers/rules.py`, and discovery source keywords live in `data/discovery_sources.json`.
+The Profile tab separates search intent from candidate evidence. Search Parameters describe target roles and domains and control discovery query expansion, hard filtering, and scoring. Candidate Profile / Resume Summary describes background, constraints, and proof points for the local dashboard. Search Parameters are the human-readable targeting strategy; scoring rules and practical-fit labels live in `scorers/rules.py`, `realism.py`, and `targeting.py`. Discovery source endpoints live in `data/discovery_sources.json`.
 
 The server binds to `127.0.0.1` only. It is intended for local personal use, not internet exposure.
 
@@ -283,7 +287,9 @@ Discovery jobs are normalized into the same archive shape as curated company job
 
 ## Scoring
 
-Scoring is rule-based and transparent. Positive signals include target role families, construction/AEC terms, reality-capture terms, customer-facing language, remote/Denver-friendly locations, and fresh postings. Negative signals suppress common mismatches such as SDR, commission-only, door-to-door, insurance sales, and unrelated technical roles.
+Scoring is rule-based and transparent. The current ranking is local-first: realistic Denver metro, construction, building-materials, interiors, showroom, design-sales, contractor-facing, stable-pay, and customer-workflow signals outrank remote SaaS keyword matches. Negative signals suppress enterprise-only/strategic/title-inflated SaaS matches, remote-only generic SaaS, SDR/BDR-only work, commission-only, door-to-door, vehicle barriers, heavy travel, and unrelated technical roles.
+
+Every rescored job carries a practical-fit label such as `Strong Local Fit`, `Strong Construction/Design Sales Fit`, `Realistic Local Sales Fit`, `Realistic Stretch`, `Remote Stretch`, `Semantic Match Only`, `Likely ATS Reject`, `Vehicle Barrier`, `Commission-Only Risk`, or `Not a Fit`. The Jobs / Radar cards, Markdown digest, and JSON top opportunities show those labels. Remote SaaS roles can remain visible as stretch candidates when their construction/customer-workflow context is credible, but they rank after realistic local fits.
 
 Tune scoring in:
 
@@ -291,13 +297,14 @@ Tune scoring in:
 scorers/rules.py
 ```
 
-The editable profile text lives in:
+The editable local profile files are:
 
 ```text
 data/search_profile.md
+data/candidate_profile.md
 ```
 
-The committed file contains generic/public sample parameters. Do not put private resume content in this file if you plan to publish the repository.
+`data/search_profile.md` contains the human-readable targeting strategy used by the local rule path. Keep private resume/profile content in ignored `data/candidate_profile.md`; the committed `data/candidate_profile.example.md` file is the safe public Candidate Profile / Resume Summary template.
 
 ## Screenshots
 
@@ -320,13 +327,14 @@ This project demonstrates Python automation, ATS/job-board scraping, structured 
 - Local archive and generated digest are ignored by Git.
 - Discovery source configuration is public and conservative.
 - `data/search_profile.md` is committed only as generic sample search parameters.
+- `data/candidate_profile.md` is local/private and ignored by Git.
+- `data/candidate_profile.example.md` is the committed safe template for a local Candidate Profile / Resume Summary.
 - Dashboard binds to `127.0.0.1`.
 - Public repo should include code and public company configuration only.
 - Job notes, hide state, and applied dates live only in the ignored local archive file.
 
 ## Roadmap / Planned Features
 
-- Editable master resume stored locally and excluded from public Git history.
 - Smarter scoring that can optionally use Profile tab search parameters.
 - Recruiter CRM for contacts, outreach status, and follow-ups.
 - AI-assisted summaries for top jobs while keeping raw data local.

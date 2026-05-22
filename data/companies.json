@@ -181,5 +181,203 @@
     "careers_url": "https://homes.cupix.com/careers.html",
     "ats_type": "generic",
     "enabled": true
+  },
+  {
+    "company_name": "Colorado Doorways",
+    "category": "building_materials",
+    "priority": 10,
+    "notes": "Denver-area architectural doors, frames, hardware, and building-products business. Strong local physical-industry alignment.",
+    "careers_url": "https://www.coloradodoorways.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Elements",
+    "category": "commercial_interiors",
+    "priority": 10,
+    "notes": "Denver commercial interiors and workplace solutions firm. Prioritize account/project/customer coordination roles.",
+    "careers_url": "https://www.elements.cloud/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "OfficeScapes",
+    "category": "commercial_interiors",
+    "priority": 10,
+    "notes": "Colorado commercial furniture and interiors dealer. Strong fit for consultative customer/project roles.",
+    "careers_url": "https://officescapes.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Rio Grande Co.",
+    "category": "building_materials",
+    "priority": 10,
+    "notes": "Denver building materials supplier. Strong fit for contractor-facing sales, account management, and operations roles.",
+    "careers_url": "https://www.riograndeco.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Dahl Plumbing",
+    "category": "industrial_distribution",
+    "priority": 9,
+    "notes": "Colorado plumbing and heating supply distributor. Strong physical-industry/customer-facing alignment.",
+    "careers_url": "https://dahlplumbing.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Rampart Supply",
+    "category": "industrial_distribution",
+    "priority": 9,
+    "notes": "Colorado plumbing, heating, and industrial supply distributor. Prioritize counter sales, account management, and customer operations.",
+    "careers_url": "https://www.rampartsupply.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Encore Electric",
+    "category": "contractor_services",
+    "priority": 9,
+    "notes": "Colorado-based electrical contractor. Strong fit for project coordination, operations, and customer-facing field support.",
+    "careers_url": "https://www.encoreelectric.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "RK Industries",
+    "category": "contractor_services",
+    "priority": 9,
+    "notes": "Colorado construction, manufacturing, mechanical, and facilities services company. Strong operational/customer workflow fit.",
+    "careers_url": "https://rkindustries.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "LONG Building Technologies",
+    "category": "facilities_operations",
+    "priority": 9,
+    "notes": "Colorado building automation, HVAC, and facilities technology company. Good fit for operations, service, and customer-facing technical roles.",
+    "careers_url": "https://www.long.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Murphy Company",
+    "category": "contractor_services",
+    "priority": 8,
+    "notes": "Mechanical contractor with Denver presence. Prioritize project coordination, field operations, and account support roles.",
+    "careers_url": "https://murphynet.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "The Gallegos Corporation",
+    "category": "contractor_services",
+    "priority": 9,
+    "notes": "Colorado masonry, concrete, stone, and building-envelope contractor. Watch for estimating, project coordination, and customer-facing operations roles.",
+    "careers_url": "https://gallegoscorp.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Colorado Glass & Mirror",
+    "category": "glass_and_glazing",
+    "priority": 10,
+    "notes": "Denver-area glass and glazing company. Strong alignment for glass, shower, architectural product, and customer estimating roles.",
+    "careers_url": "https://www.coloradoglassandmirror.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Lifetime Windows & Siding",
+    "category": "windows_and_doors",
+    "priority": 9,
+    "notes": "Denver home-improvement company. Keep only base/stable-pay consultative sales or project roles; reject canvassing/commission-only.",
+    "careers_url": "https://www.lifetimewindows.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Dreamstyle Remodeling",
+    "category": "home_improvement",
+    "priority": 8,
+    "notes": "Regional home-improvement remodeler. Watch for design consultant and sales consultant roles with stable base or paid appointments.",
+    "careers_url": "https://dreamstyleremodeling.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Cabinets To Go",
+    "category": "cabinets",
+    "priority": 8,
+    "notes": "Cabinet retail/showroom employer with design-sales roles. Prioritize cabinet designer and kitchen design roles.",
+    "careers_url": "https://cabinetstogo.com/pages/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Floor & Decor",
+    "category": "flooring",
+    "priority": 8,
+    "notes": "Tile/flooring retail and pro-services employer. Prioritize design consultant, pro sales, and account roles with base pay.",
+    "careers_url": "https://careers.flooranddecor.com/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Daltile",
+    "category": "tile",
+    "priority": 8,
+    "notes": "Tile and stone manufacturer/distributor. Prioritize showroom, architectural, contractor, and sales service roles.",
+    "careers_url": "https://www.daltile.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "MSI Surfaces",
+    "category": "countertops",
+    "priority": 8,
+    "notes": "Surfaces, flooring, tile, and countertop distributor with showroom and sales roles.",
+    "careers_url": "https://www.msisurfaces.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Builders FirstSource",
+    "category": "building_materials",
+    "priority": 8,
+    "notes": "National building materials supplier with Colorado presence. Prioritize inside sales, contractor sales, design, and estimating roles.",
+    "careers_url": "https://www.bldr.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Ferguson",
+    "category": "plumbing_supply",
+    "priority": 8,
+    "notes": "Plumbing/HVAC/building supply distributor. Prioritize counter sales, showroom, account manager, and contractor-facing roles.",
+    "careers_url": "https://www.ferguson.com/content/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "CED Greentech",
+    "category": "electrical_supply",
+    "priority": 8,
+    "notes": "Solar/electrical distribution business. Prioritize inside sales and account roles; avoid installer-only or vehicle-heavy roles.",
+    "careers_url": "https://www.cedgreentech.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Namaste Solar",
+    "category": "solar_home_improvement",
+    "priority": 8,
+    "notes": "Colorado solar company. Keep customer-facing sales or project coordination roles with base/stable pay; reject door-to-door/canvassing.",
+    "careers_url": "https://www.namastesolar.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
   }
 ]

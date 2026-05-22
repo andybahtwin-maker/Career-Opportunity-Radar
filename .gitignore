@@ -1,5 +1,6 @@
 # Local state and generated outputs
 data/jobs_archive.json
+data/candidate_profile.md
 output/
 *.log
 logs/

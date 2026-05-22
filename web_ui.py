@@ -4,10 +4,11 @@ import html
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from config import DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
+from config import CANDIDATE_PROFILE_FILE, DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
 from digest import digest_eligible, match_reasons, source_label, top_digest_jobs
 from main import run_radar_pipeline
 from storage import add_description_fields, job_matches_reference, load_archive, save_archive, update_archive_job
+from targeting import clear_targeting_cache
 from utils import posting_age_days, today_iso
 
 
@@ -16,7 +17,7 @@ PORT = 8787
 
 DEFAULT_SEARCH_PROFILE = """# Search Parameters
 
-These parameters describe the current public, generic search intent. They are editable from the local Profile tab and are informational only in this version; scoring still uses `scorers/rules.py`.
+These parameters drive discovery query expansion, hard filtering, and scoring.
 
 ## Target roles
 
@@ -64,6 +65,25 @@ These parameters describe the current public, generic search intent. They are ed
 - Commission-only roles
 - Door-to-door or canvassing
 - Own-vehicle-required language
+"""
+
+DEFAULT_CANDIDATE_PROFILE = """# Candidate Profile / Resume Summary
+
+## Background
+
+- Summarize the role families, industries, customer contexts, and technical exposure that support target roles.
+
+## Proof points
+
+- Add measurable outcomes, relevant projects, recognitions, and transferable strengths.
+
+## Constraints
+
+- Note location, work-mode, travel, schedule, compensation-model, or equipment constraints.
+
+## Realistic target fit
+
+- List job families and domains with a credible hiring story.
 """
 
 
@@ -120,13 +140,13 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
 
         if self.path == "/profile/save":
             form = read_form(self)
-            save_search_profile(first_value(form, "search_parameters"))
+            save_profile_form(form)
             self.redirect("/profile?saved=1")
             return
 
         if self.path == "/profile/run-radar":
             form = read_form(self)
-            save_search_profile(first_value(form, "search_parameters"))
+            save_profile_form(form)
             try:
                 result = run_radar_pipeline()
             except Exception as exc:
@@ -200,9 +220,26 @@ def load_search_profile() -> str:
 def save_search_profile(content: str) -> None:
     SEARCH_PROFILE_FILE.parent.mkdir(parents=True, exist_ok=True)
     SEARCH_PROFILE_FILE.write_text(content.rstrip() + "\n", encoding="utf-8")
+    clear_targeting_cache()
 
 
-def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict]]:
+def load_candidate_profile() -> str:
+    if not CANDIDATE_PROFILE_FILE.exists():
+        save_candidate_profile(DEFAULT_CANDIDATE_PROFILE)
+    return CANDIDATE_PROFILE_FILE.read_text(encoding="utf-8")
+
+
+def save_candidate_profile(content: str) -> None:
+    CANDIDATE_PROFILE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CANDIDATE_PROFILE_FILE.write_text(content.rstrip() + "\n", encoding="utf-8")
+
+
+def save_profile_form(form: dict[str, list[str]]) -> None:
+    save_search_profile(first_value(form, "search_parameters"))
+    save_candidate_profile(first_value(form, "candidate_profile"))
+
+
+def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict], list[dict]]:
     jobs = top_digest_jobs()
     seen = {job_key(job) for job in jobs}
     applied_jobs = []
@@ -231,7 +268,7 @@ def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict]]:
 
     applied_jobs.sort(key=lambda item: item.get("fit_score", 0), reverse=True)
     hidden_jobs.sort(key=lambda item: item.get("fit_score", 0), reverse=True)
-    return jobs + applied_jobs[:DIGEST_MAX_JOBS], hidden_jobs
+    return jobs, applied_jobs[:DIGEST_MAX_JOBS], hidden_jobs
 
 
 def job_key(job: dict) -> str:
@@ -239,15 +276,16 @@ def job_key(job: dict) -> str:
 
 
 def render_jobs_page(show_hidden: bool = False) -> str:
-    jobs, hidden_jobs = dashboard_jobs(show_hidden=show_hidden)
-    active_cards = "\n".join(render_job_card(job, show_hidden=show_hidden) for job in jobs)
+    jobs, applied_jobs, hidden_jobs = dashboard_jobs(show_hidden=show_hidden)
+    active_cards = render_job_sections(jobs, show_hidden=show_hidden)
+    applied_cards = render_section("Applied", applied_jobs, show_hidden=show_hidden)
     hidden_cards = "\n".join(render_job_card(job, hidden=True, show_hidden=show_hidden) for job in hidden_jobs)
     top_controls = (
         '<div class="page-actions"><a class="text-link" href="/jobs?show_hidden=1">Show hidden jobs</a></div>'
         if not show_hidden
         else '<div class="page-actions"><a class="text-link" href="/jobs">Hide hidden jobs</a></div>'
     )
-    cards = active_cards
+    cards = active_cards + applied_cards
     if show_hidden:
         cards += f'<section class="section-label">Hidden jobs</section>{hidden_cards}'
     if not cards:
@@ -255,10 +293,34 @@ def render_jobs_page(show_hidden: bool = False) -> str:
     return render_page("jobs", top_controls + cards)
 
 
+def render_job_sections(jobs: list[dict], show_hidden: bool = False) -> str:
+    sections = {
+        "Best Local / Realistic Fits": [],
+        "Construction / Design Sales Fits": [],
+        "Remote or SaaS Stretch": [],
+    }
+    for job in jobs:
+        label = str(job.get("practical_fit_label") or job.get("practical_fit") or "")
+        if label == "Strong Construction/Design Sales Fit":
+            sections["Construction / Design Sales Fits"].append(job)
+        elif label in {"Strong Local Fit", "Realistic Local Sales Fit", "Realistic Stretch"} and not job.get("remote_only_signal"):
+            sections["Best Local / Realistic Fits"].append(job)
+        else:
+            sections["Remote or SaaS Stretch"].append(job)
+    return "".join(render_section(label, section_jobs, show_hidden=show_hidden) for label, section_jobs in sections.items())
+
+
+def render_section(label: str, jobs: list[dict], show_hidden: bool = False) -> str:
+    if not jobs:
+        return ""
+    cards = "\n".join(render_job_card(job, show_hidden=show_hidden) for job in jobs)
+    return f'<section class="section-label">{escape(label)}</section>{cards}'
+
+
 def render_profile_page(saved: bool = False, run_result: dict | None = None) -> str:
     notices = []
     if saved:
-        notices.append('<div class="notice">Saved search parameters.</div>')
+        notices.append('<div class="notice">Saved search parameters and candidate profile.</div>')
     if run_result is not None:
         errors = run_result.get("errors", [])
         warnings = run_result.get("warnings", [])
@@ -283,11 +345,14 @@ def render_profile_page(saved: bool = False, run_result: dict | None = None) -> 
     content = f"""
 <section class="profile-panel">
   {notice}
-  <h2>Search Parameters</h2>
-  <p class="help">Search parameters document the scoring and filtering intent used by the local rules. Discovery sources are configured separately in <code>data/discovery_sources.json</code>.</p>
+  <h2>Profile</h2>
+  <p class="help">Search Parameters describe target roles and domains. Candidate Profile describes background, constraints, and proof points.</p>
+  <p class="help">Search Parameters drive discovery query expansion, hard filtering, and scoring. Candidate Profile is local context; scoring may still primarily use <code>scorers/rules.py</code> and <code>realism.py</code>. Discovery source endpoints are configured in <code>data/discovery_sources.json</code>.</p>
   <form method="post" action="/profile/save" id="profile-form">
     <label for="search_parameters">Search Parameters</label>
     <textarea id="search_parameters" name="search_parameters" spellcheck="true">{escape(load_search_profile())}</textarea>
+    <label for="candidate_profile">Candidate Profile / Resume Summary</label>
+    <textarea id="candidate_profile" name="candidate_profile" spellcheck="true">{escape(load_candidate_profile())}</textarea>
     <div class="actions">
       <button type="submit">Save</button>
       <button type="submit" formaction="/profile/run-radar" data-run-radar-button>Run Radar Now</button>
@@ -599,6 +664,10 @@ def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) 
     age_text = "" if age is None else f'<span class="pill">{escape(str(age))} days old</span>'
     applied_date = str(job.get("applied_date") or "")
     reasons = ", ".join(match_reasons(job)) or "matched scoring rules"
+    practical_fit = str(job.get("practical_fit_label") or job.get("practical_fit") or "Not classified")
+    domain_barrier = str(job.get("domain_barrier") or "unknown")
+    transferability = str(job.get("transferability_score", 0))
+    hireability = str(job.get("hireability_score", 0))
     applied_label = "Applied" if applied else "Not applied"
     applied_action = "Mark not applied" if applied else "Mark applied"
     hide_action = "Unhide" if hidden else "Hide"
@@ -623,6 +692,13 @@ def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) 
   <div class="meta">
     <span class="pill">{escape(job.get("location") or "Location not listed")}</span>
     <span class="pill">{escape(job.get("company_category") or "Not categorized")}</span>
+    <span class="pill">{escape(practical_fit)}</span>
+    <span class="pill">Barrier: {escape(domain_barrier)}</span>
+    <span class="pill">Transfer {escape(transferability)}</span>
+    <span class="pill">Hireability {escape(hireability)}</span>
+    <span class="pill">Vehicle: {escape('barrier' if job.get("vehicle_barrier") else 'ok')}</span>
+    <span class="pill">Commission: {escape('risk' if job.get("commission_only_risk") else 'ok')}</span>
+    <span class="pill">Base pay: {escape('signal' if job.get("base_pay_signal") else 'unknown')}</span>
     <span class="pill">{escape(source_label(job))}</span>
     <span class="pill">{escape(applied_label)}</span>
     {age_text}
