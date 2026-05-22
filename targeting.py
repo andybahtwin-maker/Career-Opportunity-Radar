@@ -9,6 +9,7 @@ from config import SEARCH_PROFILE_FILE
 
 DENVER_AREA_TERMS = (
     "denver",
+    "denver metro",
     "glendale",
     "englewood",
     "lakewood",
@@ -22,6 +23,40 @@ DENVER_AREA_TERMS = (
     "commerce city",
     "golden",
     "thornton",
+)
+
+NON_DENVER_MARKET_TERMS = (
+    "nashville",
+    "raleigh",
+    "chicago",
+    "northern california",
+    "southern california",
+    "bay area",
+    "new york",
+    "boston",
+    "seattle",
+    "austin",
+    "dallas",
+    "atlanta",
+    "florida",
+    "texas",
+    "california",
+)
+
+REMOTE_ANYWHERE_TERMS = (
+    "remote anywhere",
+    "remote from anywhere",
+    "remote across the u.s.",
+    "remote across the us",
+    "remote within the u.s.",
+    "remote within the us",
+    "anywhere in the u.s.",
+    "anywhere in the us",
+    "anywhere in united states",
+    "anywhere in the united states",
+    "national remote",
+    "fully remote across the u.s.",
+    "fully remote across the us",
 )
 
 
@@ -392,6 +427,8 @@ def is_local_or_localizable(job: dict) -> bool:
         return False
     if contains_any(location, targeting["locations_strong"]):
         return True
+    if non_denver_territory_terms(job):
+        return False
     if contains_any(location, targeting["locations_moderate"]):
         return True
     if "colorado" in location or ", co" in location:
@@ -399,6 +436,39 @@ def is_local_or_localizable(job: dict) -> bool:
     if job.get("remote") and not contains_any(text, targeting["locations_negative"]):
         return matching_required_positive_count(text) >= 2
     return False
+
+
+def has_remote_anywhere_signal(job: dict) -> bool:
+    return bool(contains_any(job_text(job), REMOTE_ANYWHERE_TERMS))
+
+
+def non_denver_territory_terms(job: dict) -> list[str]:
+    targeting = current_targeting()
+    title_location = normalize_text(f"{job.get('title', '')} {job.get('location', '')}")
+    if contains_any(title_location, targeting["locations_strong"]) or "colorado" in title_location or ", co" in title_location:
+        return []
+
+    direct_matches = contains_any(title_location, NON_DENVER_MARKET_TERMS)
+    if direct_matches:
+        return direct_matches
+    if has_remote_anywhere_signal(job):
+        return []
+
+    description = normalize_text(job.get("raw_description"))
+    context_terms = ("territory", "market", "region", "preferred", "based", "located")
+    if not contains_any(description, context_terms):
+        return []
+    matches = []
+    for market in NON_DENVER_MARKET_TERMS:
+        if market not in description:
+            continue
+        context_patterns = (
+            rf"\b{re.escape(market)}\b.{{0,40}}\b(?:territory|market|region|preferred|based|located)\b",
+            rf"\b(?:territory|market|region|preferred|based|located)\b.{{0,40}}\b{re.escape(market)}\b",
+        )
+        if any(re.search(pattern, description) for pattern in context_patterns):
+            matches.append(market)
+    return matches
 
 
 def source_penalty_applies(job: dict) -> bool:

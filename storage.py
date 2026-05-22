@@ -67,6 +67,9 @@ def rescore_jobs(jobs: list[dict]) -> list[dict]:
         job["remote_saas_signal"] = realism["remote_saas_signal"]
         job["physical_industry_software_signal"] = realism["physical_industry_software_signal"]
         job["side_cash_signal"] = realism["side_cash_signal"]
+        job["non_denver_territory_signal"] = realism["non_denver_territory_signal"]
+        job["seniority_stretch_signal"] = realism["seniority_stretch_signal"]
+        job["fit_warnings"] = realism["fit_warnings"]
         job["practical_fit_rank"] = realism["practical_fit_rank"]
         job["realism_notes"] = realism["realism_notes"]
         job["target_profile_hash"] = fingerprint
@@ -241,6 +244,9 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "remote_saas_signal": False,
             "physical_industry_software_signal": False,
             "side_cash_signal": False,
+            "non_denver_territory_signal": False,
+            "seniority_stretch_signal": False,
+            "fit_warnings": [],
             "practical_fit_rank": 5,
             "realism_notes": [],
             "target_profile_hash": profile_hash(),

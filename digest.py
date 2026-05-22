@@ -169,6 +169,8 @@ def digest_eligible(job: dict) -> bool:
         "Commission-Only Risk",
     }:
         return False
+    if job.get("non_denver_territory_signal"):
+        return False
     if any(term in title for term in EXCLUDED_DIGEST_TITLE_TERMS):
         return False
     if not any(term in title for term in TARGET_TITLE_TERMS):
@@ -243,6 +245,7 @@ def write_digest(path=DAILY_DIGEST_FILE) -> tuple[str, list[dict]]:
                     "",
                     f"- Score: {job.get('fit_score')}",
                     f"- Practical fit: {job.get('practical_fit_label') or job.get('practical_fit') or 'Not classified'}",
+                    f"- Warnings: {', '.join(job.get('fit_warnings') or []) or 'none'}",
                     f"- Domain barrier: {job.get('domain_barrier') or 'unknown'}",
                     f"- Transferability score: {job.get('transferability_score', 0)}",
                     f"- Hireability score: {job.get('hireability_score', 0)}",
@@ -303,6 +306,8 @@ def match_reasons(job: dict) -> list[str]:
         reasons.append("paid contractor lane")
     if job.get("base_pay_signal"):
         reasons.append("base/stable pay signal")
+    for warning in job.get("fit_warnings", [])[:2]:
+        reasons.append(warning)
     if any(term in tags for term in ("account executive", "sales engineer", "solutions consultant", "implementation")):
         reasons.append("target role family")
     for note in job.get("realism_notes", [])[:2]:

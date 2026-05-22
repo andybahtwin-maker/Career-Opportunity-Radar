@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, urlparse
 from config import CANDIDATE_PROFILE_FILE, DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
 from digest import digest_eligible, match_reasons, source_label, top_digest_jobs
 from main import run_radar_pipeline
-from storage import add_description_fields, job_matches_reference, load_archive, save_archive, update_archive_job
+from storage import add_description_fields, job_matches_reference, load_archive, rescore_jobs, save_archive, update_archive_job
 from targeting import clear_targeting_cache
 from utils import posting_age_days, today_iso
 
@@ -245,7 +245,7 @@ def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict], l
     applied_jobs = []
     hidden_jobs = []
 
-    for job in load_archive():
+    for job in rescore_jobs(load_archive()):
         add_description_fields(job)
         key = job_key(job)
         if (
@@ -305,10 +305,12 @@ def render_job_sections(jobs: list[dict], show_hidden: bool = False) -> str:
         label = str(job.get("practical_fit_label") or job.get("practical_fit") or "")
         if label == "Strong Construction/Design Sales Fit":
             sections["Construction / Design Sales Fits"].append(job)
-        elif label in {"Strong Local Fit", "Realistic Local Sales Fit", "Realistic Local Design/Technical Fit", "Realistic Stretch"} and not job.get("remote_only_signal"):
-            sections["Best Local / Realistic Fits"].append(job)
         elif label in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch"} or job.get("physical_industry_software_signal"):
             sections["Physical-Industry Software Fits"].append(job)
+        elif label in {"Strong Local Fit", "Realistic Local Sales Fit", "Realistic Local Design/Technical Fit"} or (
+            label == "Realistic Stretch" and job.get("denver_metro_signal") and not job.get("remote_only_signal")
+        ):
+            sections["Best Local / Realistic Fits"].append(job)
         elif label == "Side-Cash Contractor":
             sections["Side-Cash Contractor"].append(job)
         else:
@@ -686,6 +688,7 @@ def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) 
         toggle = '<button class="link-button" type="button" data-description-toggle aria-expanded="false">Show more</button>'
 
     applied_date_text = f'<span class="pill">Applied on {escape(applied_date)}</span>' if applied and applied_date else ""
+    warning_pills = "".join(f'<span class="pill">Warning: {escape(str(warning))}</span>' for warning in job.get("fit_warnings", []))
 
     return f"""<section class="card {'applied' if applied else ''} {'hidden' if hidden else ''}">
   <div class="topline">
@@ -707,6 +710,7 @@ def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) 
     <span class="pill">Base pay: {escape('signal' if job.get("base_pay_signal") else 'unknown')}</span>
     <span class="pill">{escape(source_label(job))}</span>
     <span class="pill">{escape(applied_label)}</span>
+    {warning_pills}
     {age_text}
     {applied_date_text}
   </div>

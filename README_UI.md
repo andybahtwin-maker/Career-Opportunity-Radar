@@ -31,7 +31,9 @@ The Profile tab separates search intent from candidate evidence. Search Paramete
 
 The Jobs / Radar page groups practical fits so local and realistic roles surface before secondary physical-industry software, paid side-cash contractor work, and generic remote SaaS stretches. Practical-fit labels include `Strong Local Fit`, `Strong Construction/Design Sales Fit`, `Realistic Local Sales Fit`, `Realistic Local Design/Technical Fit`, `Strong Construction Tech Fit`, `Remote Physical-Industry Stretch`, `Side-Cash Contractor`, `Realistic Stretch`, `Remote Stretch`, `Semantic Match Only`, `Likely ATS Reject`, `Vehicle Barrier`, `Commission-Only Risk`, and `Not a Fit`.
 
-Ranking prioritizes Denver metro and local/hybrid construction, interiors, showroom, design-sales, building-materials, contractor-facing, customer-workflow, stable-pay, and vehicle/reimbursement feasibility signals. Remote software roles tied to construction, AEC, homebuilding, field operations, contractor workflow, facilities, manufacturing, geospatial, or reality capture remain visible as secondary fits; generic remote SaaS or enterprise stretch roles are labeled and downgraded.
+Ranking prioritizes Denver metro and local/hybrid construction, interiors, showroom, design-sales, building-materials, contractor-facing, customer-workflow, stable-pay, and vehicle/reimbursement feasibility signals. Remote software roles tied to construction, AEC, homebuilding, field operations, contractor workflow, facilities, manufacturing, geospatial, or reality capture remain visible as secondary fits; non-Denver territories, generic remote SaaS, and senior enterprise stretches are warned and downgraded.
+
+Job cards, digest entries, and JSON top opportunities expose warning reasons when scoring detects a non-Denver territory, senior/enterprise stretch, generic remote SaaS context, remote stretch, vehicle barrier, commission-only risk, or already-applied job.
 
 The `Run Radar Now` button saves the current Search Parameters and Candidate Profile, reruns the local radar pipeline, refreshes `data/jobs_archive.json`, regenerates `output/daily_digest.md`, and shows a status message on the Profile tab.
 

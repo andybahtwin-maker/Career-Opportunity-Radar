@@ -212,13 +212,20 @@ NEGATIVE_SIGNALS = {
 }
 
 TITLE_NEGATIVE_SIGNALS = {
-    "enterprise": -10,
-    "enterprise account executive": -12,
-    "strategic account executive": -12,
-    "senior sales engineer": -10,
-    "senior solutions engineer": -10,
-    "director": -12,
-    "vp": -12,
+    "enterprise": -14,
+    "enterprise account executive": -28,
+    "strategic account executive": -28,
+    "senior strategic": -30,
+    "senior strategic customer success manager": -34,
+    "enterprise customer success": -24,
+    "large enterprise": -20,
+    "senior sales engineer": -24,
+    "senior solutions engineer": -24,
+    "director": -28,
+    "head of": -28,
+    "advisory": -22,
+    "principal": -22,
+    "vp": -28,
     "backend software engineer": -10,
     "software engineer": -8,
     "devops": -8,
@@ -332,8 +339,8 @@ def score_job(job: dict) -> tuple[int, list[str]]:
 
     realism = evaluate_job(job)
     if job.get("remote") and not realism["physical_industry_software_signal"] and not realism["side_cash_signal"]:
-        score -= 8
-        tags.append("-8 generic remote flag")
+        score -= 16
+        tags.append("-16 generic remote flag")
 
     if source_penalty_applies(job) and not realism["physical_industry_software_signal"] and not realism["side_cash_signal"]:
         score -= 12
@@ -348,6 +355,12 @@ def score_job(job: dict) -> tuple[int, list[str]]:
     tags.append(f"hireability score: {realism['hireability_score']}")
     for note in realism["realism_notes"][:3]:
         tags.append(note)
+    if realism["non_denver_territory_signal"]:
+        score -= 55
+        tags.append("-55 non-Denver territory")
+    if realism["seniority_stretch_signal"]:
+        score -= 18
+        tags.append("-18 senior/enterprise stretch")
     if realism["denver_metro_signal"]:
         score += 18
         tags.append("+18 Denver metro realism")
@@ -363,9 +376,12 @@ def score_job(job: dict) -> tuple[int, list[str]]:
     if realism["physical_industry_software_signal"] and realism["practical_fit_label"] in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch", "Realistic Stretch"}:
         score += 10
         tags.append("+10 physical-industry software context")
+    if realism["remote_only_signal"] and realism["physical_industry_software_signal"]:
+        score -= 12
+        tags.append("-12 remote physical-industry secondary lane")
     if realism["remote_saas_signal"] and not realism["physical_industry_software_signal"] and realism["practical_fit_label"] in {"Remote Stretch", "Semantic Match Only"}:
-        score -= 18
-        tags.append("-18 generic remote SaaS stretch")
+        score -= 30
+        tags.append("-30 generic remote SaaS stretch")
     elif realism["remote_only_signal"] and realism["practical_fit_label"] == "Remote Stretch":
         score -= 10
         tags.append("-10 generic remote stretch")

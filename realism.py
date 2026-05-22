@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import re
 
-from targeting import contains_any, current_targeting, is_local_or_localizable, job_text
+from targeting import (
+    contains_any,
+    current_targeting,
+    is_local_or_localizable,
+    job_text,
+    non_denver_territory_terms,
+)
 
 
 HIGH_BARRIER_DOMAINS = {
@@ -365,6 +371,9 @@ PHYSICAL_INDUSTRY_SOFTWARE_TERMS = (
     "reality capture",
     "homebuilding",
     "homebuilding software",
+    "jobsite",
+    "building lifecycle",
+    "architecture, engineering, and construction",
     "manufacturing operations",
 )
 
@@ -413,10 +422,32 @@ ENTERPRISE_SALES_TERMS = (
     "advisory",
     "director",
     "enterprise account executive",
+    "enterprise customer success",
     "existing enterprise book",
     "fortune 500",
     "fortune-500",
+    "gong",
+    "head of",
+    "large enterprise",
+    "clari",
     "meddic",
+    "principal",
+    "senior strategic",
+    "senior sales engineer",
+    "strategic account executive",
+    "vp",
+)
+
+SENIORITY_STRETCH_TITLE_TERMS = (
+    "advisory",
+    "director",
+    "enterprise account executive",
+    "enterprise customer success",
+    "head of",
+    "large enterprise",
+    "principal",
+    "senior sales engineer",
+    "senior strategic",
     "strategic account executive",
     "vp",
 )
@@ -443,13 +474,14 @@ def evaluate_job(job: dict) -> dict:
     base_pay_signals = contains_phrases(combined, BASE_PAY_TERMS) or bool(re.search(r"\$\s?(?:5[0-9]|6[0-9]|7[0-9]|8[0-9])(?:[,k]\d{0,3})?", combined))
     strong_base_signals = contains_phrases(combined, STRONG_BASE_TERMS)
     targeting = current_targeting()
+    territory_conflicts = non_denver_territory_terms(job)
     denver_matches = contains_any(str(job.get("location") or "").lower(), targeting["locations_strong"])
     local_work_patterns = contains_any(combined, targeting["locations_moderate"])
     remote_job = bool(job.get("remote")) or "remote" in str(job.get("location") or "").lower()
     localizable = is_local_or_localizable(job)
     metro_local = bool(denver_matches) or "colorado" in str(job.get("location") or "").lower()
     remote_only = remote_job and not metro_local and not local_work_patterns
-    remote_saas = remote_only and bool(contains_phrases(combined, REMOTE_SAAS_TERMS))
+    remote_saas = remote_job and not metro_local and bool(contains_phrases(combined, REMOTE_SAAS_TERMS))
     physical_software_terms = contains_phrases(combined, PHYSICAL_INDUSTRY_SOFTWARE_TERMS)
     software_words = contains_phrases(combined, ("saas", "software", "platform", "technology"))
     physical_software_domains = [
@@ -484,6 +516,10 @@ def evaluate_job(job: dict) -> dict:
             "solutions engineer",
             "solutions consultant",
         )
+    )
+    seniority_stretch = bool(
+        contains_phrases(title, SENIORITY_STRETCH_TITLE_TERMS)
+        or contains_phrases(combined, ENTERPRISE_SALES_TERMS)
     )
 
     if high_domains:
@@ -574,8 +610,12 @@ def evaluate_job(job: dict) -> dict:
         label = "Realistic Local Sales Fit"
     elif localizable and metro_local and local_technical_title and (local_design_sales_fit or construction_context) and hireability_score >= 8:
         label = "Realistic Local Design/Technical Fit"
-    elif remote_only and physical_software_context and strong_remote_context and not enterprise_sales_barriers:
-        label = "Strong Construction Tech Fit" if transferability_score >= 14 and hireability_score >= 12 else "Remote Physical-Industry Stretch"
+    elif remote_only and physical_software_context and strong_remote_context:
+        label = (
+            "Strong Construction Tech Fit"
+            if transferability_score >= 14 and hireability_score >= 12 and not seniority_stretch and not territory_conflicts
+            else "Remote Physical-Industry Stretch"
+        )
     elif remote_only:
         label = "Remote Stretch"
     else:
@@ -648,6 +688,22 @@ def evaluate_job(job: dict) -> dict:
     if low_side_cash_pay:
         notes.append("side-cash pay under $15/hr")
 
+    warnings = []
+    if territory_conflicts:
+        warnings.append("Non-Denver territory")
+    if seniority_stretch:
+        warnings.append("Senior/enterprise stretch")
+    if remote_saas and not physical_software_context:
+        warnings.append("Generic remote SaaS")
+    if vehicle_barrier:
+        warnings.append("Vehicle barrier")
+    if commission_only_risk:
+        warnings.append("Commission-only risk")
+    if remote_only and label in {"Remote Stretch", "Remote Physical-Industry Stretch"}:
+        warnings.append("Remote stretch")
+    if job.get("applied"):
+        warnings.append("Applied already")
+
     return {
         "domain_barrier": domain_barrier,
         "domain_matches": high_domains + moderate_domains + low_domains,
@@ -665,6 +721,9 @@ def evaluate_job(job: dict) -> dict:
         "remote_saas_signal": bool(remote_saas),
         "physical_industry_software_signal": bool(physical_software_context),
         "side_cash_signal": bool(side_cash_fit),
+        "non_denver_territory_signal": bool(territory_conflicts),
+        "seniority_stretch_signal": bool(seniority_stretch),
+        "fit_warnings": warnings,
         "practical_fit_rank": practical_fit_rank(label),
         "realism_score_delta": boost - penalty,
         "realism_notes": notes,
