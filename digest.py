@@ -28,6 +28,7 @@ TARGET_TITLE_TERMS = (
     "account manager",
     "architectural products sales",
     "building materials sales",
+    "commercial market sales representative",
     "cabinet designer",
     "client success manager",
     "commercial interiors sales",
@@ -35,6 +36,9 @@ TARGET_TITLE_TERMS = (
     "contractor sales",
     "countertop sales",
     "design consultant",
+    "design sales consultant",
+    "cad designer",
+    "cad drafter",
     "estimator",
     "flooring sales",
     "glass sales",
@@ -45,6 +49,10 @@ TARGET_TITLE_TERMS = (
     "customer success manager",
     "customer onboarding specialist",
     "field operations consultant",
+    "ai evaluator",
+    "ai trainer",
+    "content evaluator",
+    "domain expert",
     "implementation",
     "operations coordinator",
     "product specialist",
@@ -53,6 +61,7 @@ TARGET_TITLE_TERMS = (
     "sales representative",
     "sales consultant",
     "sales estimator",
+    "sales domain expert",
     "showroom",
     "showroom consultant",
     "showroom sales consultant",
@@ -61,6 +70,23 @@ TARGET_TITLE_TERMS = (
     "territory sales representative",
     "tile sales",
     "trade sales representative",
+    "trade representative",
+    "market representative",
+    "architectural representative",
+    "a&d representative",
+    "builder sales representative",
+    "dealer sales representative",
+    "specification sales",
+    "specifier sales",
+    "surface sales",
+    "slab sales",
+    "stone sales",
+    "porcelain sales",
+    "millwork sales",
+    "technical designer",
+    "drafting technician",
+    "millwork designer",
+    "commercial interiors designer",
     "window and door sales",
 )
 
@@ -147,9 +173,17 @@ def digest_eligible(job: dict) -> bool:
         return False
     if not any(term in title for term in TARGET_TITLE_TERMS):
         return False
-    if not is_local_or_localizable(job):
+    if not is_local_or_localizable(job) and not job.get("side_cash_signal") and not job.get("physical_industry_software_signal"):
         return False
-    local_fit_labels = {"Strong Construction/Design Sales Fit", "Strong Local Fit", "Realistic Local Sales Fit"}
+    local_fit_labels = {
+        "Strong Construction/Design Sales Fit",
+        "Strong Local Fit",
+        "Realistic Local Sales Fit",
+        "Realistic Local Design/Technical Fit",
+        "Strong Construction Tech Fit",
+        "Remote Physical-Industry Stretch",
+        "Side-Cash Contractor",
+    }
     if matching_required_positive_count(job_text(job)) < 2 and job.get("practical_fit_label") not in local_fit_labels:
         return False
     if any(term in location for term in NON_US_LOCATION_TERMS) and not any(
@@ -251,7 +285,7 @@ def match_reasons(job: dict) -> list[str]:
         reasons.append(job.get("practical_fit_label") or job.get("practical_fit"))
     if job.get("domain_barrier"):
         reasons.append(f"{job.get('domain_barrier')} domain barrier")
-    if any(term in tags for term in ("construction", "contractor", "aec")):
+    if not job.get("side_cash_signal") and any(term in tags for term in ("construction", "contractor", "aec")):
         reasons.append("construction/AEC domain")
     if any(term in tags for term in ("field operations", "workflow")):
         reasons.append("operations workflow")
@@ -259,10 +293,14 @@ def match_reasons(job: dict) -> list[str]:
         reasons.append("technical demos/presentations")
     if any(term in tags for term in ("customer-facing", "customer facing", "customer success")):
         reasons.append("customer-facing")
-    if any(term in tags for term in ("local/localizable", "hybrid", "denver", "target metro")):
+    if job.get("denver_metro_signal") or any(term in tags for term in ("hybrid", "denver", "target metro")):
         reasons.append("local/Denver-friendly")
-    if "remote saas stretch" in tags or job.get("remote_saas_signal"):
+    if ("remote saas stretch" in tags or job.get("remote_saas_signal")) and not job.get("physical_industry_software_signal"):
         reasons.append("remote SaaS stretch")
+    if job.get("physical_industry_software_signal"):
+        reasons.append("physical-industry software")
+    if job.get("side_cash_signal"):
+        reasons.append("paid contractor lane")
     if job.get("base_pay_signal"):
         reasons.append("base/stable pay signal")
     if any(term in tags for term in ("account executive", "sales engineer", "solutions consultant", "implementation")):

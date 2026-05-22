@@ -162,10 +162,18 @@ def hard_filter_fetched_jobs(jobs: list[dict], label: str) -> tuple[list[dict], 
         if realism["practical_fit"] in {"Semantic Match Only", "Likely ATS Reject", "Not a Fit"}:
             rejected["low_realism"] += 1
             continue
-        if not is_local_or_localizable(job):
+        local_fit_labels = {
+            "Strong Construction/Design Sales Fit",
+            "Strong Local Fit",
+            "Realistic Local Sales Fit",
+            "Realistic Local Design/Technical Fit",
+            "Strong Construction Tech Fit",
+            "Remote Physical-Industry Stretch",
+            "Side-Cash Contractor",
+        }
+        if not is_local_or_localizable(job) and not realism["side_cash_signal"] and not realism["physical_industry_software_signal"]:
             rejected["not_local"] += 1
             continue
-        local_fit_labels = {"Strong Construction/Design Sales Fit", "Strong Local Fit", "Realistic Local Sales Fit"}
         if matching_required_positive_count(job_text(job)) < 1 and realism["practical_fit_label"] not in local_fit_labels:
             rejected["weak_required_signals"] += 1
             continue
@@ -274,10 +282,13 @@ def json_job(job: dict) -> dict:
         "vehicle_barrier": bool(job.get("vehicle_barrier")),
         "commission_only_risk": bool(job.get("commission_only_risk")),
         "base_pay_signal": bool(job.get("base_pay_signal")),
+        "vehicle_support_signal": bool(job.get("vehicle_support_signal")),
         "denver_metro_signal": bool(job.get("denver_metro_signal")),
         "localizable_signal": bool(job.get("localizable_signal")),
         "remote_only_signal": bool(job.get("remote_only_signal")),
         "remote_saas_signal": bool(job.get("remote_saas_signal")),
+        "physical_industry_software_signal": bool(job.get("physical_industry_software_signal")),
+        "side_cash_signal": bool(job.get("side_cash_signal")),
         "realism_notes": job.get("realism_notes", []),
         "category": job.get("company_category") or "Not categorized",
         "source": source_label(job),

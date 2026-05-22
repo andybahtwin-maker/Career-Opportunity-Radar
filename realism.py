@@ -89,19 +89,19 @@ HIGH_BARRIER_DOMAINS = {
 
 MODERATE_BARRIER_DOMAINS = {
     "construction SaaS": ("construction saas", "aec", "construction software", "contractor software"),
-    "contractor operations": ("contractor operations", "contractor workflow", "contractor-facing", "contractor facing"),
-    "field operations software": ("field operations", "field service", "dispatch", "work orders"),
+    "contractor operations": ("contractor operations", "contractor workflow", "contractor-facing", "contractor facing", "homebuilding software"),
+    "field operations software": ("field operations", "field service", "field-service operations", "dispatch", "work orders"),
     "facilities platforms": ("facilities", "facility operations", "maintenance operations"),
     "industrial operations": ("industrial operations", "industrial distribution", "commercial equipment"),
     "manufacturing operations": ("manufacturing operations", "manufacturing workflow", "supply chain operations"),
 }
 
 LOW_BARRIER_DOMAINS = {
-    "building materials": ("building materials", "lumber", "millwork", "architectural products"),
+    "building materials": ("building materials", "building products", "lumber", "millwork", "architectural millwork", "architectural products", "hardware", "fixtures", "lighting"),
     "commercial interiors": ("commercial interiors", "furniture dealer", "workplace interiors", "showroom"),
     "glass and glazing": ("glass", "glazing", "shower glass", "architectural glass"),
-    "flooring and tile": ("flooring", "tile", "carpet", "hardwood", "stone slab"),
-    "cabinets and countertops": ("cabinet", "cabinetry", "countertop", "countertops", "solid surface", "quartz"),
+    "flooring and tile": ("flooring", "commercial flooring", "residential flooring", "tile", "carpet", "hardwood", "stone slab"),
+    "cabinets and countertops": ("cabinet", "cabinetry", "countertop", "countertops", "solid surface", "quartz", "surface sales", "slab sales", "porcelain slab", "stone sales"),
     "windows and doors": ("windows and doors", "window and door", "replacement windows", "entry doors", "millwork"),
     "kitchen and bath": ("kitchen and bath", "kitchen design", "bath design", "bathroom design"),
     "home improvement": ("home improvement", "remodeling", "design-build", "in-home sales"),
@@ -153,6 +153,18 @@ STRONG_TRANSFER_TERMS = (
     "architectural products",
     "industrial distribution",
     "facilities operations",
+    "design-build",
+    "homebuilding",
+    "geospatial",
+    "drone",
+    "reality capture",
+    "manufacturing operations",
+    "architects",
+    "designers",
+    "specifiers",
+    "trade partners",
+    "builders",
+    "fabricators",
 )
 
 WEAK_TRANSFER_TERMS = (
@@ -193,9 +205,6 @@ ATS_REJECT_TERMS = (
     "commission only",
     "door-to-door",
     "door to door",
-    "own vehicle required",
-    "own car mandatory",
-    "must have reliable vehicle",
     "insurance sales",
     "cdl",
     "warehouse-only",
@@ -214,13 +223,15 @@ VEHICLE_BARRIER_TERMS = (
 
 VEHICLE_MITIGATION_TERMS = (
     "company vehicle",
+    "branded vehicle",
+    "fleet vehicle",
     "vehicle provided",
     "company car",
     "mileage reimbursement",
     "mileage reimbursed",
     "travel reimbursement",
     "travel reimbursed",
-    "local travel",
+    "car allowance",
 )
 
 COMMISSION_RISK_TERMS = (
@@ -232,19 +243,37 @@ COMMISSION_RISK_TERMS = (
 
 BASE_PAY_TERMS = (
     "base salary",
+    "base + bonus",
+    "base and bonus",
+    "base plus bonus",
     "base pay",
+    "base compensation",
     "salary range",
     "hourly",
+    "hourly + commission",
+    "hourly plus commission",
     "plus commission",
     "commission eligible",
-    "draw",
     "guaranteed",
     "paid training",
+    "benefits",
     "$50",
     "$55",
     "$60",
     "$65",
     "$70",
+)
+
+STRONG_BASE_TERMS = (
+    "$55",
+    "$65",
+    "$80",
+    "55k base",
+    "65k base",
+    "80k base",
+    "base salary of $55",
+    "base salary of $65",
+    "base salary of $80",
 )
 
 LOCAL_SALES_TITLE_TERMS = (
@@ -253,9 +282,11 @@ LOCAL_SALES_TITLE_TERMS = (
     "building materials sales",
     "cabinet designer",
     "commercial sales representative",
+    "commercial market sales representative",
     "contractor sales",
     "countertop sales",
     "design consultant",
+    "design sales consultant",
     "estimator",
     "flooring sales",
     "glass sales",
@@ -269,7 +300,35 @@ LOCAL_SALES_TITLE_TERMS = (
     "territory sales",
     "tile sales",
     "trade sales",
+    "trade representative",
+    "market representative",
+    "market sales representative",
+    "a&d representative",
+    "architectural representative",
+    "builder sales representative",
+    "dealer sales representative",
+    "specification sales",
+    "specifier sales",
+    "architectural sales consultant",
+    "surface sales",
+    "slab sales",
+    "stone sales",
+    "porcelain sales",
+    "millwork sales",
     "window and door sales",
+)
+
+LOCAL_TECHNICAL_DESIGN_TITLE_TERMS = (
+    "cad designer",
+    "solidworks designer",
+    "technical designer",
+    "drafting technician",
+    "cad drafter",
+    "millwork designer",
+    "commercial interiors designer",
+    "estimator cad",
+    "design sales support",
+    "sales engineer solidworks",
 )
 
 REALISTIC_REMOTE_TITLE_TERMS = (
@@ -287,6 +346,67 @@ REMOTE_SAAS_TERMS = (
     "saas",
     "software platform",
     "software-as-a-service",
+)
+
+PHYSICAL_INDUSTRY_SOFTWARE_TERMS = (
+    "aec technology",
+    "construction saas",
+    "construction software",
+    "contractor software",
+    "contractor workflow",
+    "design-build",
+    "field operations",
+    "field operations software",
+    "field-service software",
+    "field-service operations",
+    "facilities operations",
+    "geospatial",
+    "drone",
+    "reality capture",
+    "homebuilding",
+    "homebuilding software",
+    "manufacturing operations",
+)
+
+PHYSICAL_SOFTWARE_DOMAIN_NAMES = {
+    "construction SaaS",
+    "contractor operations",
+    "field operations software",
+    "facilities platforms",
+    "manufacturing operations",
+}
+
+SIDE_CASH_TERMS = (
+    "ai evaluator",
+    "ai trainer",
+    "sales domain expert",
+    "private investigator domain expert",
+    "domain expert",
+    "annotation",
+    "content evaluator",
+    "video annotation",
+    "audio annotation",
+    "image annotation",
+)
+
+PAID_PROJECT_TERMS = (
+    "paid project",
+    "hourly",
+    "per hour",
+    "/hr",
+    "contractor",
+    "freelance",
+    "project-based",
+)
+
+SIDE_CASH_REJECT_TERMS = (
+    "buy equipment",
+    "purchase equipment",
+    "upfront cost",
+    "unpaid assessment",
+    "unpaid test",
+    "assessment longer than 30 minutes",
+    "assessment takes 1 hour",
 )
 
 ENTERPRISE_SALES_TERMS = (
@@ -320,7 +440,8 @@ def evaluate_job(job: dict) -> dict:
     vehicle_barriers = contains_phrases(combined, VEHICLE_BARRIER_TERMS)
     vehicle_mitigations = contains_phrases(combined, VEHICLE_MITIGATION_TERMS)
     commission_risks = contains_phrases(combined, COMMISSION_RISK_TERMS)
-    base_pay_signals = contains_phrases(combined, BASE_PAY_TERMS) or bool(re.search(r"\$\s?\d{2,3}[,.]?\d{0,3}", combined))
+    base_pay_signals = contains_phrases(combined, BASE_PAY_TERMS) or bool(re.search(r"\$\s?(?:5[0-9]|6[0-9]|7[0-9]|8[0-9])(?:[,k]\d{0,3})?", combined))
+    strong_base_signals = contains_phrases(combined, STRONG_BASE_TERMS)
     targeting = current_targeting()
     denver_matches = contains_any(str(job.get("location") or "").lower(), targeting["locations_strong"])
     local_work_patterns = contains_any(combined, targeting["locations_moderate"])
@@ -329,7 +450,18 @@ def evaluate_job(job: dict) -> dict:
     metro_local = bool(denver_matches) or "colorado" in str(job.get("location") or "").lower()
     remote_only = remote_job and not metro_local and not local_work_patterns
     remote_saas = remote_only and bool(contains_phrases(combined, REMOTE_SAAS_TERMS))
-    vehicle_barrier = bool(vehicle_barriers and not vehicle_mitigations)
+    physical_software_terms = contains_phrases(combined, PHYSICAL_INDUSTRY_SOFTWARE_TERMS)
+    software_words = contains_phrases(combined, ("saas", "software", "platform", "technology"))
+    physical_software_domains = [
+        domain
+        for domain in moderate_domains
+        if domain in PHYSICAL_SOFTWARE_DOMAIN_NAMES
+        and (domain != "field operations software" or software_words)
+    ]
+    physical_software_context = bool(physical_software_domains or physical_software_terms)
+    local_vehicle_support = metro_local and bool(contains_phrases(combined, ("local territory", "denver territory", "denver office", "denver showroom")))
+    vehicle_supported = bool(vehicle_mitigations or local_vehicle_support or strong_base_signals)
+    vehicle_barrier = bool(vehicle_barriers and not vehicle_supported)
     commission_only_risk = bool(commission_risks and not base_pay_signals)
     if YEARS_REQUIRED_RE.search(combined):
         ats_barriers.append("7+ years required")
@@ -400,17 +532,23 @@ def evaluate_job(job: dict) -> dict:
         )
     )
     local_sales_title = contains_phrases(title, LOCAL_SALES_TITLE_TERMS)
+    local_technical_title = contains_phrases(title, LOCAL_TECHNICAL_DESIGN_TITLE_TERMS)
     realistic_remote_title = contains_phrases(title, REALISTIC_REMOTE_TITLE_TERMS)
     enterprise_sales_barriers = contains_phrases(combined, ENTERPRISE_SALES_TERMS)
     construction_context = bool(
         low_domains
         or moderate_domains
-        or contains_phrases(combined, ("aec", "building materials", "construction", "contractor", "homebuilding"))
+        or contains_phrases(combined, ("aec", "building materials", "building products", "construction", "contractor", "homebuilding", "geospatial", "drone", "reality capture", "design-build"))
     )
     strong_remote_context = bool(
         construction_context
         or (realistic_remote_title and not enterprise_sales_barriers and not high_domains)
     )
+    side_cash_terms = contains_phrases(combined, SIDE_CASH_TERMS)
+    paid_project_terms = contains_phrases(combined, PAID_PROJECT_TERMS)
+    side_cash_rejects = contains_phrases(combined, SIDE_CASH_REJECT_TERMS)
+    low_side_cash_pay = bool(re.search(r"\$\s?(?:[0-9]|1[0-4])(?:\.\d{2})?\s*(?:/|per)\s*(?:hr|hour)", combined))
+    side_cash_fit = bool(remote_job and side_cash_terms and paid_project_terms and not side_cash_rejects and not commission_only_risk)
 
     if commission_only_risk:
         label = "Commission-Only Risk"
@@ -420,9 +558,11 @@ def evaluate_job(job: dict) -> dict:
         label = "Likely ATS Reject"
     elif domain_barrier == "high" and transferability_score < 14:
         label = "Not a Fit"
-    elif remote_saas and not strong_remote_context and (enterprise_sales_barriers or transferability_score < 14):
+    elif side_cash_fit:
+        label = "Side-Cash Contractor"
+    elif remote_saas and not physical_software_context and not strong_remote_context and (enterprise_sales_barriers or transferability_score < 14):
         label = "Semantic Match Only"
-    elif remote_saas and (title_barrier or enterprise_sales_barriers or not strong_remote_context):
+    elif remote_saas and not physical_software_context and (title_barrier or enterprise_sales_barriers or not strong_remote_context):
         label = "Remote Stretch"
     elif transferability_score < 4 and hireability_score < 8:
         label = "Semantic Match Only"
@@ -432,6 +572,10 @@ def evaluate_job(job: dict) -> dict:
         label = "Strong Local Fit"
     elif localizable and metro_local and (local_sales_title or local_design_sales_fit) and hireability_score >= 8:
         label = "Realistic Local Sales Fit"
+    elif localizable and metro_local and local_technical_title and (local_design_sales_fit or construction_context) and hireability_score >= 8:
+        label = "Realistic Local Design/Technical Fit"
+    elif remote_only and physical_software_context and strong_remote_context and not enterprise_sales_barriers:
+        label = "Strong Construction Tech Fit" if transferability_score >= 14 and hireability_score >= 12 else "Remote Physical-Industry Stretch"
     elif remote_only:
         label = "Remote Stretch"
     else:
@@ -443,6 +587,14 @@ def evaluate_job(job: dict) -> dict:
         boost = 18 if label == "Strong Construction/Design Sales Fit" else 14
     elif label == "Realistic Local Sales Fit":
         boost = 12
+    elif label == "Realistic Local Design/Technical Fit":
+        boost = 10
+    elif label == "Strong Construction Tech Fit":
+        boost = 8
+    elif label == "Remote Physical-Industry Stretch":
+        boost = 2
+    elif label == "Side-Cash Contractor":
+        penalty = 4
     elif label == "Realistic Stretch":
         boost = 4
     elif label == "Remote Stretch":
@@ -475,6 +627,8 @@ def evaluate_job(job: dict) -> dict:
         notes.append("vehicle barrier: " + ", ".join(vehicle_barriers[:3]))
     elif vehicle_mitigations:
         notes.append("vehicle mitigated: " + ", ".join(vehicle_mitigations[:3]))
+    elif local_vehicle_support:
+        notes.append("vehicle local support signal")
     if commission_only_risk:
         notes.append("commission-only risk: " + ", ".join(commission_risks[:3]))
     if base_pay_signals:
@@ -485,8 +639,14 @@ def evaluate_job(job: dict) -> dict:
         notes.append("local work pattern: " + ", ".join(local_work_patterns[:3]))
     if remote_saas:
         notes.append("remote SaaS stretch context")
+    if physical_software_context:
+        notes.append("physical-industry software: " + ", ".join((physical_software_terms or physical_software_domains)[:3]))
     if enterprise_sales_barriers:
         notes.append("enterprise sales barrier: " + ", ".join(enterprise_sales_barriers[:3]))
+    if side_cash_fit:
+        notes.append("paid remote contractor lane: " + ", ".join(side_cash_terms[:3]))
+    if low_side_cash_pay:
+        notes.append("side-cash pay under $15/hr")
 
     return {
         "domain_barrier": domain_barrier,
@@ -498,10 +658,13 @@ def evaluate_job(job: dict) -> dict:
         "vehicle_barrier": vehicle_barrier,
         "commission_only_risk": commission_only_risk,
         "base_pay_signal": bool(base_pay_signals),
+        "vehicle_support_signal": bool(vehicle_supported),
         "denver_metro_signal": bool(metro_local),
         "localizable_signal": bool(localizable),
         "remote_only_signal": bool(remote_only),
         "remote_saas_signal": bool(remote_saas),
+        "physical_industry_software_signal": bool(physical_software_context),
+        "side_cash_signal": bool(side_cash_fit),
         "practical_fit_rank": practical_fit_rank(label),
         "realism_score_delta": boost - penalty,
         "realism_notes": notes,
@@ -542,11 +705,15 @@ def practical_fit_rank(label: str) -> int:
         "Strong Construction/Design Sales Fit": 0,
         "Strong Local Fit": 0,
         "Realistic Local Sales Fit": 1,
-        "Realistic Stretch": 2,
-        "Remote Stretch": 3,
-        "Semantic Match Only": 4,
-        "Not a Fit": 5,
-        "Likely ATS Reject": 6,
-        "Vehicle Barrier": 7,
-        "Commission-Only Risk": 7,
+        "Realistic Local Design/Technical Fit": 1,
+        "Strong Construction Tech Fit": 2,
+        "Realistic Stretch": 3,
+        "Remote Physical-Industry Stretch": 3,
+        "Side-Cash Contractor": 4,
+        "Remote Stretch": 5,
+        "Semantic Match Only": 6,
+        "Not a Fit": 7,
+        "Likely ATS Reject": 8,
+        "Vehicle Barrier": 9,
+        "Commission-Only Risk": 9,
     }.get(label, 5)

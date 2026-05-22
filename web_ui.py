@@ -297,16 +297,22 @@ def render_job_sections(jobs: list[dict], show_hidden: bool = False) -> str:
     sections = {
         "Best Local / Realistic Fits": [],
         "Construction / Design Sales Fits": [],
-        "Remote or SaaS Stretch": [],
+        "Physical-Industry Software Fits": [],
+        "Side-Cash Contractor": [],
+        "Generic Remote or SaaS Stretch": [],
     }
     for job in jobs:
         label = str(job.get("practical_fit_label") or job.get("practical_fit") or "")
         if label == "Strong Construction/Design Sales Fit":
             sections["Construction / Design Sales Fits"].append(job)
-        elif label in {"Strong Local Fit", "Realistic Local Sales Fit", "Realistic Stretch"} and not job.get("remote_only_signal"):
+        elif label in {"Strong Local Fit", "Realistic Local Sales Fit", "Realistic Local Design/Technical Fit", "Realistic Stretch"} and not job.get("remote_only_signal"):
             sections["Best Local / Realistic Fits"].append(job)
+        elif label in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch"} or job.get("physical_industry_software_signal"):
+            sections["Physical-Industry Software Fits"].append(job)
+        elif label == "Side-Cash Contractor":
+            sections["Side-Cash Contractor"].append(job)
         else:
-            sections["Remote or SaaS Stretch"].append(job)
+            sections["Generic Remote or SaaS Stretch"].append(job)
     return "".join(render_section(label, section_jobs, show_hidden=show_hidden) for label, section_jobs in sections.items())
 
 

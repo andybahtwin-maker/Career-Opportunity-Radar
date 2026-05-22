@@ -16,8 +16,12 @@ from utils import posting_age_days
 POSITIVE_SIGNALS = {
     "account manager": 7,
     "commercial sales representative": 8,
+    "commercial market sales representative": 9,
+    "market representative": 7,
+    "market sales representative": 8,
     "design consultant": 9,
     "sales consultant": 7,
+    "design sales consultant": 9,
     "territory sales representative": 8,
     "project consultant": 7,
     "product specialist": 6,
@@ -33,11 +37,34 @@ POSITIVE_SIGNALS = {
     "glazing sales": 9,
     "building materials sales": 8,
     "architectural products sales": 9,
+    "a&d representative": 9,
+    "architectural representative": 9,
+    "architectural sales consultant": 9,
+    "builder sales representative": 8,
+    "dealer sales representative": 8,
+    "specification sales": 8,
+    "specifier sales": 8,
     "trade sales representative": 8,
+    "trade representative": 8,
     "contractor sales": 8,
     "inside sales representative": 6,
     "commercial interiors sales": 8,
     "sales estimator": 8,
+    "surface sales": 8,
+    "slab sales": 8,
+    "stone sales": 8,
+    "porcelain sales": 8,
+    "millwork sales": 8,
+    "cad designer": 7,
+    "solidworks designer": 6,
+    "technical designer": 6,
+    "drafting technician": 6,
+    "cad drafter": 6,
+    "millwork designer": 8,
+    "commercial interiors designer": 8,
+    "estimator cad": 7,
+    "design sales support": 7,
+    "sales engineer solidworks": 5,
     "solar sales consultant": 5,
     "customer onboarding specialist": 7,
     "implementation specialist": 7,
@@ -63,6 +90,23 @@ POSITIVE_SIGNALS = {
     "kitchen and bath": 7,
     "home improvement": 5,
     "architectural products": 6,
+    "building products": 6,
+    "quartz": 5,
+    "stone": 4,
+    "slab": 5,
+    "porcelain slab": 6,
+    "solid surface": 5,
+    "millwork": 6,
+    "architectural millwork": 7,
+    "finish materials": 6,
+    "fixtures": 4,
+    "lighting": 4,
+    "hardware": 3,
+    "commercial flooring": 6,
+    "residential flooring": 5,
+    "surfaces": 5,
+    "building envelope": 5,
+    "facade": 5,
     "industrial distribution": 6,
     "facilities operations": 5,
     "lidar": 5,
@@ -73,6 +117,26 @@ POSITIVE_SIGNALS = {
     "workflow": 4,
     "contractor": 4,
     "trade sales": 5,
+    "company vehicle": 9,
+    "branded vehicle": 8,
+    "fleet vehicle": 8,
+    "mileage reimbursement": 7,
+    "car allowance": 7,
+    "design center": 6,
+    "local branch": 5,
+    "denver office": 8,
+    "denver showroom": 9,
+    "denver territory": 9,
+    "aia": 4,
+    "iida": 4,
+    "idcec": 4,
+    "architects": 5,
+    "designers": 4,
+    "specifiers": 5,
+    "trade partners": 5,
+    "builders": 4,
+    "installers": 3,
+    "fabricators": 4,
     "customer meetings": 5,
     "customer tracking": 4,
     "homeowner-facing": 5,
@@ -83,10 +147,18 @@ POSITIVE_SIGNALS = {
     "estimate": 3,
     "training provided": 5,
     "base salary": 5,
+    "base + bonus": 6,
+    "base and bonus": 6,
+    "base plus bonus": 6,
     "base pay": 5,
     "salary range": 4,
     "hourly": 4,
     "plus commission": 4,
+    "hourly + commission": 5,
+    "benefits": 4,
+    "paid training": 5,
+    "actively hiring": 5,
+    "urgently hiring": 5,
     "mapping": 3,
     "visualization": 3,
     "technical demos": 4,
@@ -120,8 +192,6 @@ NEGATIVE_SIGNALS = {
     "warehouse-only": -9,
     "installer-only": -9,
     "laborer-only": -9,
-    "remote-only": -8,
-    "remote only": -8,
     "nationwide territory": -8,
     "heavy travel": -8,
     "meddic": -6,
@@ -136,6 +206,9 @@ NEGATIVE_SIGNALS = {
     "requires 5+ years saas": -10,
     "5+ years saas": -10,
     "8+ years": -12,
+    "draw only": -12,
+    "draw-only": -12,
+    "unlimited earning potential": -9,
 }
 
 TITLE_NEGATIVE_SIGNALS = {
@@ -257,15 +330,15 @@ def score_job(job: dict) -> tuple[int, list[str]]:
             score += weight
             tags.append(f"{weight} title: {phrase}")
 
-    if job.get("remote"):
+    realism = evaluate_job(job)
+    if job.get("remote") and not realism["physical_industry_software_signal"] and not realism["side_cash_signal"]:
         score -= 8
-        tags.append("-8 remote flag")
+        tags.append("-8 generic remote flag")
 
-    if source_penalty_applies(job):
+    if source_penalty_applies(job) and not realism["physical_industry_software_signal"] and not realism["side_cash_signal"]:
         score -= 12
         tags.append("-12 remote/generic source penalty")
 
-    realism = evaluate_job(job)
     score += int(realism["realism_score_delta"])
     delta = int(realism["realism_score_delta"])
     sign = "+" if delta >= 0 else ""
@@ -281,12 +354,24 @@ def score_job(job: dict) -> tuple[int, list[str]]:
     if realism["base_pay_signal"]:
         score += 8
         tags.append("+8 base/stable pay structure")
-    if realism["remote_saas_signal"] and realism["practical_fit_label"] in {"Remote Stretch", "Semantic Match Only"}:
+    else:
+        score -= 5
+        tags.append("-5 unclear compensation")
+    if realism["vehicle_support_signal"]:
+        score += 8
+        tags.append("+8 vehicle/travel support")
+    if realism["physical_industry_software_signal"] and realism["practical_fit_label"] in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch", "Realistic Stretch"}:
+        score += 10
+        tags.append("+10 physical-industry software context")
+    if realism["remote_saas_signal"] and not realism["physical_industry_software_signal"] and realism["practical_fit_label"] in {"Remote Stretch", "Semantic Match Only"}:
         score -= 18
-        tags.append("-18 remote SaaS stretch")
+        tags.append("-18 generic remote SaaS stretch")
     elif realism["remote_only_signal"] and realism["practical_fit_label"] == "Remote Stretch":
         score -= 10
-        tags.append("-10 remote stretch")
+        tags.append("-10 generic remote stretch")
+    if realism["side_cash_signal"] and "side-cash pay under $15/hr" in realism["realism_notes"]:
+        score -= 14
+        tags.append("-14 side-cash pay under $15/hr")
 
     required_matches = matching_required_positive_count(text)
     if required_matches >= 2:
@@ -299,9 +384,9 @@ def score_job(job: dict) -> tuple[int, list[str]]:
         score -= 8
         tags.append("-8 missing required positives")
 
-    if is_local_or_localizable(job):
+    if is_local_or_localizable(job) or realism["physical_industry_software_signal"] or realism["side_cash_signal"]:
         score += 8
-        tags.append("+8 local/localizable")
+        tags.append("+8 local/localizable or secondary lane")
     else:
         score -= 10
         tags.append("-10 not local/localizable")
@@ -368,6 +453,9 @@ def score_job(job: dict) -> tuple[int, list[str]]:
     age = posting_age_days(job.get("date_posted"), job.get("first_seen"))
     if age is None:
         tags.append("no posting date")
+    elif age <= 7:
+        score += 6
+        tags.append("+6 fresh under 7 days")
     elif age <= 14:
         score += 3
         tags.append("+3 fresh under 14 days")
