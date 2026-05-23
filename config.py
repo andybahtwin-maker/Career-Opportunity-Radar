@@ -11,6 +11,8 @@ JOBS_ARCHIVE_FILE = DATA_DIR / "jobs_archive.json"
 SEARCH_PROFILE_FILE = DATA_DIR / "search_profile.md"
 CANDIDATE_PROFILE_FILE = DATA_DIR / "candidate_profile.md"
 DAILY_DIGEST_FILE = OUTPUT_DIR / "daily_digest.md"
+RADAR_RUN_LOG_FILE = OUTPUT_DIR / "radar_run.log"
+RADAR_RUN_STATUS_FILE = OUTPUT_DIR / "radar_run_status.json"
 
 HTTP_TIMEOUT_SECONDS = 20
 USER_AGENT = "career-opportunity-radar/1.0 (+local personal job monitor)"

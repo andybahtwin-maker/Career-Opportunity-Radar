@@ -1,13 +1,26 @@
 from __future__ import annotations
 
+import json
+import os
 import html
+import subprocess
+import sys
 import threading
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from config import CANDIDATE_PROFILE_FILE, DIGEST_MAX_JOBS, DIGEST_MIN_SCORE, JOBS_ARCHIVE_FILE, SEARCH_PROFILE_FILE
+from config import (
+    CANDIDATE_PROFILE_FILE,
+    DIGEST_MAX_JOBS,
+    DIGEST_MIN_SCORE,
+    JOBS_ARCHIVE_FILE,
+    OUTPUT_DIR,
+    RADAR_RUN_LOG_FILE,
+    RADAR_RUN_STATUS_FILE,
+    SEARCH_PROFILE_FILE,
+)
 from digest import digest_eligible, match_reasons, source_label, top_digest_jobs
-from main import run_radar_pipeline
 from storage import add_description_fields, job_matches_reference, load_archive, rescore_jobs, save_archive, update_archive_job
 from targeting import clear_targeting_cache
 from utils import posting_age_days, today_iso
@@ -15,8 +28,8 @@ from utils import posting_age_days, today_iso
 
 HOST = "127.0.0.1"
 PORT = 8787
-RUN_RADAR_TIMEOUT_SECONDS = 90
-_RUN_RADAR_LOCK = threading.Lock()
+RUN_RADAR_WORKER_COMMAND = [sys.executable, "-u", "scripts/radar_run_worker.py"]
+_RUN_RADAR_START_LOCK = threading.Lock()
 
 DEFAULT_SEARCH_PROFILE = """# Search Parameters
 
@@ -120,8 +133,10 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
             self.write_html(render_jobs_page(show_hidden=show_hidden))
             return
         if parsed.path == "/profile":
-            saved = "saved=1" in parsed.query
-            self.write_html(render_profile_page(saved=saved))
+            query = parse_qs(parsed.query)
+            saved = "saved" in query
+            run_state = first_value(query, "run")
+            self.write_html(render_profile_page(saved=saved, run_state=run_state))
             return
         self.send_error(404)
 
@@ -160,8 +175,8 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
         if self.path == "/profile/run-radar":
             form = read_form(self)
             save_profile_form(form)
-            result = run_radar_with_timeout()
-            self.write_html(render_profile_page(saved=True, run_result=result))
+            result = start_radar_run_background()
+            self.redirect(f"/profile?saved=1&run={result['run_state']}")
             return
 
         self.send_error(404)
@@ -195,6 +210,147 @@ def job_page_redirect(form: dict[str, list[str]]) -> str:
 def read_form(handler: BaseHTTPRequestHandler) -> dict[str, list[str]]:
     length = int(handler.headers.get("Content-Length") or 0)
     return parse_qs(handler.rfile.read(length).decode("utf-8"))
+
+
+def radar_run_default_status() -> dict:
+    return {
+        "running": False,
+        "started_at": "",
+        "finished_at": "",
+        "exit_code": None,
+        "message": "",
+        "last_command": "",
+        "pid": None,
+    }
+
+
+def read_radar_run_status() -> dict:
+    if not RADAR_RUN_STATUS_FILE.exists():
+        return radar_run_default_status()
+    try:
+        status = json.loads(RADAR_RUN_STATUS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return radar_run_default_status()
+    if not isinstance(status, dict):
+        return radar_run_default_status()
+    merged = radar_run_default_status()
+    merged.update(status)
+    merged["running"] = bool(merged.get("running"))
+    if merged.get("pid") is not None:
+        try:
+            merged["pid"] = int(merged["pid"])
+        except Exception:
+            merged["pid"] = None
+    return merged
+
+
+def radar_run_pid_alive(pid: int | None) -> bool:
+    if not pid or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def write_radar_run_status(status: dict) -> None:
+    RADAR_RUN_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = RADAR_RUN_STATUS_FILE.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path.replace(RADAR_RUN_STATUS_FILE)
+
+
+def current_radar_run_status() -> dict:
+    status = read_radar_run_status()
+    if status.get("running") and not radar_run_pid_alive(status.get("pid")):
+        status["running"] = False
+        if not status.get("finished_at"):
+            status["finished_at"] = datetime.now(timezone.utc).isoformat()
+        if status.get("exit_code") is None:
+            status["exit_code"] = 1
+        if not status.get("message"):
+            status["message"] = "Previous run stopped unexpectedly."
+        write_radar_run_status(status)
+    return status
+
+
+def format_radar_run_value(value: str) -> str:
+    return value or "not set"
+
+
+def profile_run_notice(radar_status: dict, run_state: str) -> str:
+    message = str(radar_status.get("message") or "").strip()
+    exit_code = radar_status.get("exit_code")
+    running = bool(radar_status.get("running"))
+
+    if run_state == "already_running":
+        return '<div class="notice error">Radar is already running in the background. Check Jobs / Radar in a few minutes.</div>'
+    if run_state == "started" or running:
+        return '<div class="notice success">Radar run started in the background. You can keep using the dashboard. Check Jobs / Radar in a few minutes.</div>'
+    if exit_code == 0:
+        return '<div class="notice success">Last radar run complete.</div>'
+    if exit_code not in (None, 0):
+        detail = escape(message or "Radar run failed.")
+        return f'<div class="notice error">{detail} Check <code>output/radar_run.log</code>.</div>'
+    return ""
+
+
+def start_radar_run_background() -> dict:
+    with _RUN_RADAR_START_LOCK:
+        status = current_radar_run_status()
+        if status.get("running") and radar_run_pid_alive(status.get("pid")):
+            return {
+                "run_state": "already_running",
+                "notice": "Radar run is already running.",
+                "status": status,
+            }
+
+        started_at = datetime.now(timezone.utc).isoformat()
+        status.update(
+            {
+                "running": True,
+                "started_at": started_at,
+                "finished_at": "",
+                "exit_code": None,
+                "message": "Radar run started in the background.",
+                "last_command": "python3 main.py --json",
+                "pid": None,
+            }
+        )
+        write_radar_run_status(status)
+
+        try:
+            proc = subprocess.Popen(
+                RUN_RADAR_WORKER_COMMAND,
+                cwd=str(OUTPUT_DIR.parent),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception as exc:
+            status.update(
+                {
+                    "running": False,
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "exit_code": 1,
+                    "message": f"Failed to start radar run: {exc}",
+                }
+            )
+            write_radar_run_status(status)
+            return {
+                "run_state": "failed",
+                "notice": "Radar run could not be started.",
+                "status": status,
+            }
+
+        status["pid"] = proc.pid
+        write_radar_run_status(status)
+        return {
+            "run_state": "started",
+            "notice": "Radar run started in the background. Check Jobs / Radar in a few minutes.",
+            "status": status,
+        }
 
 
 def toggle_applied(job_id: str = "", url: str = "") -> bool:
@@ -247,53 +403,6 @@ def save_candidate_profile(content: str) -> None:
 def save_profile_form(form: dict[str, list[str]]) -> None:
     save_search_profile(first_value(form, "search_parameters"))
     save_candidate_profile(first_value(form, "candidate_profile"))
-
-
-def run_radar_with_timeout(timeout_seconds: int = RUN_RADAR_TIMEOUT_SECONDS) -> dict:
-    if not _RUN_RADAR_LOCK.acquire(blocking=False):
-        return {
-            "errors": [],
-            "warnings": [],
-            "total_jobs_scanned": 0,
-            "jobs_accepted": 0,
-            "jobs_rejected": 0,
-            "run_status": "running",
-        }
-
-    result: dict = {}
-    done = threading.Event()
-
-    def worker() -> None:
-        nonlocal result
-        try:
-            result = run_radar_pipeline()
-        except Exception as exc:
-            result = {
-                "errors": [str(exc)],
-                "warnings": [],
-                "total_jobs_scanned": 0,
-                "jobs_accepted": 0,
-                "jobs_rejected": 0,
-            }
-        finally:
-            done.set()
-            _RUN_RADAR_LOCK.release()
-
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
-    done.wait(timeout_seconds)
-    if not done.is_set():
-        return {
-            "errors": [],
-            "warnings": [
-                "Radar run is still taking too long. Try again later or run python3 main.py --json from terminal."
-            ],
-            "total_jobs_scanned": 0,
-            "jobs_accepted": 0,
-            "jobs_rejected": 0,
-            "run_status": "timed_out",
-        }
-    return result
 
 
 def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict], list[dict]]:
@@ -399,38 +508,24 @@ def render_section(label: str, jobs: list[dict], show_hidden: bool = False) -> s
     return f'<section class="section-label">{escape(label)}</section>{cards}'
 
 
-def render_profile_page(saved: bool = False, run_result: dict | None = None) -> str:
+def render_profile_page(saved: bool = False, run_state: str = "") -> str:
+    radar_status = current_radar_run_status()
     notices = []
     if saved:
         notices.append('<div class="notice">Saved search parameters and candidate profile.</div>')
-    if run_result is not None:
-        errors = run_result.get("errors", [])
-        warnings = run_result.get("warnings", [])
-        if run_result.get("run_status") == "timed_out":
-            notices.append(
-                '<div class="notice error">Radar run is still taking too long. Try again later or run '
-                'python3 main.py --json from terminal.</div>'
-            )
-        elif run_result.get("run_status") == "running":
-            notices.append('<div class="notice error">Radar run is already in progress. Try again later.</div>')
-        elif errors:
-            error_text = html.escape(errors[0], quote=True)
-            notices.append(
-                '<div class="notice error">Radar run failed: '
-                f"{error_text}"
-                f" (errors: {len(errors)}, warnings: {len(warnings)})"
-                "</div>"
-            )
-        else:
-            notices.append(
-                '<div class="notice success">'
-                f"Radar run complete. Scanned {run_result.get('total_jobs_scanned', 0)} jobs, "
-                f"accepted {run_result.get('jobs_accepted', 0)}, rejected {run_result.get('jobs_rejected', 0)}, "
-                f"warnings {len(warnings)}, errors 0."
-                ' <a href="/jobs">View Jobs / Radar</a>'
-                "</div>"
-            )
+    notices.append(profile_run_notice(radar_status, run_state))
     notice = "".join(notices)
+    status_block = f"""
+<section class="profile-panel">
+  <h2>Radar Run Status</h2>
+  <p class="help">Full scans can take a few minutes with the expanded 74-company watchlist.</p>
+  <p><a class="button" href="/jobs">View Jobs / Radar</a></p>
+  <p class="help">Last run started: {escape(format_radar_run_value(str(radar_status.get('started_at') or '')))}</p>
+  <p class="help">Last run finished: {escape(format_radar_run_value(str(radar_status.get('finished_at') or '')))}</p>
+  <p class="help">Running: {escape('yes' if radar_status.get('running') else 'no')}</p>
+  <p class="help">Last message: {escape(format_radar_run_value(str(radar_status.get('message') or '')))}</p>
+  <p class="help">Last command: {escape(format_radar_run_value(str(radar_status.get('last_command') or '')))}</p>
+</section>"""
     content = f"""
 <section class="profile-panel">
   {notice}
@@ -446,10 +541,11 @@ def render_profile_page(saved: bool = False, run_result: dict | None = None) -> 
     <div class="actions">
       <button type="submit">Save</button>
       <button type="submit" formaction="/profile/run-radar" data-run-radar-button>Run Radar Now</button>
+      <a class="button" href="/jobs">Refresh Dashboard / View Jobs</a>
     </div>
   </form>
 </section>"""
-    return render_page("profile", content)
+    return render_page("profile", status_block + content)
 
 
 def render_page(active_tab: str, content: str) -> str:
