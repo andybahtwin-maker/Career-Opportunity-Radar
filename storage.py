@@ -69,6 +69,7 @@ def rescore_jobs(jobs: list[dict]) -> list[dict]:
         job["side_cash_signal"] = realism["side_cash_signal"]
         job["non_denver_territory_signal"] = realism["non_denver_territory_signal"]
         job["seniority_stretch_signal"] = realism["seniority_stretch_signal"]
+        job["stale_posting_signal"] = realism["stale_posting_signal"]
         job["fit_warnings"] = realism["fit_warnings"]
         job["practical_fit_rank"] = realism["practical_fit_rank"]
         job["realism_notes"] = realism["realism_notes"]
@@ -246,6 +247,7 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "side_cash_signal": False,
             "non_denver_territory_signal": False,
             "seniority_stretch_signal": False,
+            "stale_posting_signal": False,
             "fit_warnings": [],
             "practical_fit_rank": 5,
             "realism_notes": [],

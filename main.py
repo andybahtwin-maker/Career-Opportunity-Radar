@@ -291,6 +291,7 @@ def json_job(job: dict) -> dict:
         "side_cash_signal": bool(job.get("side_cash_signal")),
         "non_denver_territory_signal": bool(job.get("non_denver_territory_signal")),
         "seniority_stretch_signal": bool(job.get("seniority_stretch_signal")),
+        "stale_posting_signal": bool(job.get("stale_posting_signal")),
         "fit_warnings": list(job.get("fit_warnings") or []),
         "realism_notes": job.get("realism_notes", []),
         "category": job.get("company_category") or "Not categorized",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from utils import posting_age_days
 from targeting import (
     contains_any,
     current_targeting,
@@ -90,6 +91,17 @@ HIGH_BARRIER_DOMAINS = {
         "rfp",
         "vendor management",
         "contract lifecycle",
+    ),
+    "healthcare tech": (
+        "healthcare tech",
+        "healthtech",
+        "health care technology",
+        "healthcare technology",
+        "aging care",
+        "senior care",
+        "home care",
+        "patient engagement",
+        "care coordination",
     ),
 }
 
@@ -461,6 +473,7 @@ def evaluate_job(job: dict) -> dict:
     title = str(job.get("title") or "").lower()
     category = str(job.get("company_category") or "").replace("_", " ").lower()
     combined = f"{text} {category}"
+    age = posting_age_days(job.get("date_posted"), job.get("first_seen"))
 
     high_domains = matching_domains(combined, HIGH_BARRIER_DOMAINS)
     moderate_domains = matching_domains(combined, MODERATE_BARRIER_DOMAINS)
@@ -521,6 +534,7 @@ def evaluate_job(job: dict) -> dict:
         contains_phrases(title, SENIORITY_STRETCH_TITLE_TERMS)
         or contains_phrases(combined, ENTERPRISE_SALES_TERMS)
     )
+    stale_posting = age is not None and age >= 30
 
     if high_domains:
         domain_barrier = "high"
@@ -689,10 +703,14 @@ def evaluate_job(job: dict) -> dict:
         notes.append("side-cash pay under $15/hr")
 
     warnings = []
+    if domain_barrier == "high":
+        warnings.append("High domain barrier")
     if territory_conflicts:
         warnings.append("Non-Denver territory")
     if seniority_stretch:
         warnings.append("Senior/enterprise stretch")
+    if stale_posting:
+        warnings.append("Stale posting")
     if remote_saas and not physical_software_context:
         warnings.append("Generic remote SaaS")
     if vehicle_barrier:
@@ -723,6 +741,7 @@ def evaluate_job(job: dict) -> dict:
         "side_cash_signal": bool(side_cash_fit),
         "non_denver_territory_signal": bool(territory_conflicts),
         "seniority_stretch_signal": bool(seniority_stretch),
+        "stale_posting_signal": bool(stale_posting),
         "fit_warnings": warnings,
         "practical_fit_rank": practical_fit_rank(label),
         "realism_score_delta": boost - penalty,

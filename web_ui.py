@@ -240,7 +240,14 @@ def save_profile_form(form: dict[str, list[str]]) -> None:
 
 
 def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict], list[dict]]:
-    jobs = top_digest_jobs()
+    jobs = [
+        job
+        for job in rescore_jobs(load_archive())
+        if not job.get("ignored")
+        and not job.get("applied")
+        and job.get("fit_score", 0) >= DIGEST_MIN_SCORE
+    ]
+    jobs.sort(key=lambda item: (item.get("practical_fit_rank", 5), -item.get("fit_score", 0)))
     seen = {job_key(job) for job in jobs}
     applied_jobs = []
     hidden_jobs = []
@@ -259,8 +266,6 @@ def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict], l
         if (
             job.get("applied")
             and not job.get("ignored")
-            and job.get("fit_score", 0) >= DIGEST_MIN_SCORE
-            and digest_eligible(job)
             and key not in seen
         ):
             applied_jobs.append(job)
@@ -299,22 +304,34 @@ def render_job_sections(jobs: list[dict], show_hidden: bool = False) -> str:
         "Construction / Design Sales Fits": [],
         "Physical-Industry Software Fits": [],
         "Side-Cash Contractor": [],
-        "Generic Remote or SaaS Stretch": [],
+        "Remote / Stretch / Stale": [],
     }
     for job in jobs:
         label = str(job.get("practical_fit_label") or job.get("practical_fit") or "")
-        if label == "Strong Construction/Design Sales Fit":
+        stale = bool(job.get("stale_posting_signal"))
+        if label in {"Likely ATS Reject", "Not a Fit", "Semantic Match Only"} or str(job.get("domain_barrier") or "") == "high":
+            sections["Remote / Stretch / Stale"].append(job)
+        elif job.get("seniority_stretch_signal"):
+            sections["Remote / Stretch / Stale"].append(job)
+        elif label == "Strong Construction/Design Sales Fit" and not stale and not job.get("non_denver_territory_signal"):
             sections["Construction / Design Sales Fits"].append(job)
-        elif label in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch"} or job.get("physical_industry_software_signal"):
+        elif (
+            label in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch"}
+            or job.get("physical_industry_software_signal")
+        ) and not stale and not job.get("non_denver_territory_signal") and not job.get("seniority_stretch_signal"):
             sections["Physical-Industry Software Fits"].append(job)
         elif label in {"Strong Local Fit", "Realistic Local Sales Fit", "Realistic Local Design/Technical Fit"} or (
-            label == "Realistic Stretch" and job.get("denver_metro_signal") and not job.get("remote_only_signal")
+            label == "Realistic Stretch"
+            and job.get("denver_metro_signal")
+            and not job.get("remote_only_signal")
+            and not stale
+            and not job.get("seniority_stretch_signal")
         ):
             sections["Best Local / Realistic Fits"].append(job)
         elif label == "Side-Cash Contractor":
             sections["Side-Cash Contractor"].append(job)
         else:
-            sections["Generic Remote or SaaS Stretch"].append(job)
+            sections["Remote / Stretch / Stale"].append(job)
     return "".join(render_section(label, section_jobs, show_hidden=show_hidden) for label, section_jobs in sections.items())
 
 

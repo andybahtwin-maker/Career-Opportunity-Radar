@@ -481,8 +481,17 @@ def score_job(job: dict) -> tuple[int, list[str]]:
     elif age <= 14:
         score += 3
         tags.append("+3 fresh under 14 days")
-    elif age >= 30:
-        score -= 3
-        tags.append("-3 older than 30 days")
+    elif age <= 30:
+        score -= 2
+        tags.append("-2 older than 30 days")
+    elif age <= 45:
+        score -= 10
+        tags.append("-10 stale posting 30+ days")
+    elif age <= 60:
+        score -= 20
+        tags.append("-20 stale posting 45+ days")
+    else:
+        score -= 30
+        tags.append("-30 stale posting 60+ days")
 
     return score, tags
