@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -14,6 +15,8 @@ from utils import posting_age_days, today_iso
 
 HOST = "127.0.0.1"
 PORT = 8787
+RUN_RADAR_TIMEOUT_SECONDS = 90
+_RUN_RADAR_LOCK = threading.Lock()
 
 DEFAULT_SEARCH_PROFILE = """# Search Parameters
 
@@ -100,6 +103,16 @@ def run_server(host: str = HOST, port: int = PORT) -> None:
 
 
 class JobDashboardHandler(BaseHTTPRequestHandler):
+    def do_HEAD(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path in {"/", "/jobs", "/profile"}:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        self.send_error(404)
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path in {"/", "/jobs"}:
@@ -147,10 +160,7 @@ class JobDashboardHandler(BaseHTTPRequestHandler):
         if self.path == "/profile/run-radar":
             form = read_form(self)
             save_profile_form(form)
-            try:
-                result = run_radar_pipeline()
-            except Exception as exc:
-                result = {"errors": [str(exc)], "warnings": [], "total_jobs_scanned": 0, "jobs_accepted": 0, "jobs_rejected": 0}
+            result = run_radar_with_timeout()
             self.write_html(render_profile_page(saved=True, run_result=result))
             return
 
@@ -237,6 +247,53 @@ def save_candidate_profile(content: str) -> None:
 def save_profile_form(form: dict[str, list[str]]) -> None:
     save_search_profile(first_value(form, "search_parameters"))
     save_candidate_profile(first_value(form, "candidate_profile"))
+
+
+def run_radar_with_timeout(timeout_seconds: int = RUN_RADAR_TIMEOUT_SECONDS) -> dict:
+    if not _RUN_RADAR_LOCK.acquire(blocking=False):
+        return {
+            "errors": [],
+            "warnings": [],
+            "total_jobs_scanned": 0,
+            "jobs_accepted": 0,
+            "jobs_rejected": 0,
+            "run_status": "running",
+        }
+
+    result: dict = {}
+    done = threading.Event()
+
+    def worker() -> None:
+        nonlocal result
+        try:
+            result = run_radar_pipeline()
+        except Exception as exc:
+            result = {
+                "errors": [str(exc)],
+                "warnings": [],
+                "total_jobs_scanned": 0,
+                "jobs_accepted": 0,
+                "jobs_rejected": 0,
+            }
+        finally:
+            done.set()
+            _RUN_RADAR_LOCK.release()
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    done.wait(timeout_seconds)
+    if not done.is_set():
+        return {
+            "errors": [],
+            "warnings": [
+                "Radar run is still taking too long. Try again later or run python3 main.py --json from terminal."
+            ],
+            "total_jobs_scanned": 0,
+            "jobs_accepted": 0,
+            "jobs_rejected": 0,
+            "run_status": "timed_out",
+        }
+    return result
 
 
 def dashboard_jobs(show_hidden: bool = False) -> tuple[list[dict], list[dict], list[dict]]:
@@ -349,7 +406,14 @@ def render_profile_page(saved: bool = False, run_result: dict | None = None) -> 
     if run_result is not None:
         errors = run_result.get("errors", [])
         warnings = run_result.get("warnings", [])
-        if errors:
+        if run_result.get("run_status") == "timed_out":
+            notices.append(
+                '<div class="notice error">Radar run is still taking too long. Try again later or run '
+                'python3 main.py --json from terminal.</div>'
+            )
+        elif run_result.get("run_status") == "running":
+            notices.append('<div class="notice error">Radar run is already in progress. Try again later.</div>')
+        elif errors:
             error_text = html.escape(errors[0], quote=True)
             notices.append(
                 '<div class="notice error">Radar run failed: '
@@ -373,6 +437,7 @@ def render_profile_page(saved: bool = False, run_result: dict | None = None) -> 
   <h2>Profile</h2>
   <p class="help">Search Parameters describe target roles and domains. Candidate Profile describes background, constraints, and proof points.</p>
   <p class="help">Search Parameters drive discovery query expansion, hard filtering, and scoring. Candidate Profile is local context; scoring may still primarily use <code>scorers/rules.py</code> and <code>realism.py</code>. Discovery source endpoints are configured in <code>data/discovery_sources.json</code>.</p>
+  <p class="help">If the dashboard looks stale, stop the existing <code>python3 main.py serve</code> process and start it again from the project directory.</p>
   <form method="post" action="/profile/save" id="profile-form">
     <label for="search_parameters">Search Parameters</label>
     <textarea id="search_parameters" name="search_parameters" spellcheck="true">{escape(load_search_profile())}</textarea>
@@ -706,6 +771,11 @@ def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) 
 
     applied_date_text = f'<span class="pill">Applied on {escape(applied_date)}</span>' if applied and applied_date else ""
     warning_pills = "".join(f'<span class="pill">Warning: {escape(str(warning))}</span>' for warning in job.get("fit_warnings", []))
+    vehicle_support = "yes" if job.get("vehicle_support_signal") else "no"
+    vehicle_barrier = "yes" if job.get("vehicle_barrier") else "no"
+    license_required = "yes" if job.get("license_required_signal") else "no"
+    driving_record = "clean" if job.get("driving_record_signal") else "unknown"
+    travel_supported = "yes" if job.get("travel_supported_signal") else "no"
 
     return f"""<section class="card {'applied' if applied else ''} {'hidden' if hidden else ''}">
   <div class="topline">
@@ -722,7 +792,11 @@ def render_job_card(job: dict, hidden: bool = False, show_hidden: bool = False) 
     <span class="pill">Barrier: {escape(domain_barrier)}</span>
     <span class="pill">Transfer {escape(transferability)}</span>
     <span class="pill">Hireability {escape(hireability)}</span>
-    <span class="pill">Vehicle: {escape('barrier' if job.get("vehicle_barrier") else 'ok')}</span>
+    <span class="pill">Vehicle support: {escape(vehicle_support)}</span>
+    <span class="pill">Vehicle barrier: {escape(vehicle_barrier)}</span>
+    <span class="pill">License required: {escape(license_required)}</span>
+    <span class="pill">Driving record: {escape(driving_record)}</span>
+    <span class="pill">Travel supported: {escape(travel_supported)}</span>
     <span class="pill">Commission: {escape('risk' if job.get("commission_only_risk") else 'ok')}</span>
     <span class="pill">Base pay: {escape('signal' if job.get("base_pay_signal") else 'unknown')}</span>
     <span class="pill">{escape(source_label(job))}</span>

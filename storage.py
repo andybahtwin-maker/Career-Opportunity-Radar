@@ -61,6 +61,10 @@ def rescore_jobs(jobs: list[dict]) -> list[dict]:
         job["commission_only_risk"] = realism["commission_only_risk"]
         job["base_pay_signal"] = realism["base_pay_signal"]
         job["vehicle_support_signal"] = realism["vehicle_support_signal"]
+        job["license_required_signal"] = realism["license_required_signal"]
+        job["driving_record_signal"] = realism["driving_record_signal"]
+        job["travel_supported_signal"] = realism["travel_supported_signal"]
+        job["heavy_travel_signal"] = realism["heavy_travel_signal"]
         job["denver_metro_signal"] = realism["denver_metro_signal"]
         job["localizable_signal"] = realism["localizable_signal"]
         job["remote_only_signal"] = realism["remote_only_signal"]
@@ -239,6 +243,10 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "commission_only_risk": False,
             "base_pay_signal": False,
             "vehicle_support_signal": False,
+            "license_required_signal": False,
+            "driving_record_signal": False,
+            "travel_supported_signal": False,
+            "heavy_travel_signal": False,
             "denver_metro_signal": False,
             "localizable_signal": False,
             "remote_only_signal": False,

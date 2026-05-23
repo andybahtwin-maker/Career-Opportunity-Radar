@@ -373,6 +373,16 @@ def score_job(job: dict) -> tuple[int, list[str]]:
     if realism["vehicle_support_signal"]:
         score += 8
         tags.append("+8 vehicle/travel support")
+    if realism["license_required_signal"]:
+        tags.append("license required")
+    if realism["driving_record_signal"]:
+        score += 1
+        tags.append("+1 clean driving record")
+    if realism["travel_supported_signal"]:
+        tags.append("travel supported")
+    if realism["heavy_travel_signal"] and not realism["travel_supported_signal"]:
+        score -= 10
+        tags.append("-10 heavy travel without support")
     if realism["physical_industry_software_signal"] and realism["practical_fit_label"] in {"Strong Construction Tech Fit", "Remote Physical-Industry Stretch", "Realistic Stretch"}:
         score += 10
         tags.append("+10 physical-industry software context")

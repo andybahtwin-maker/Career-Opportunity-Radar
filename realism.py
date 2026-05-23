@@ -241,15 +241,64 @@ VEHICLE_BARRIER_TERMS = (
 
 VEHICLE_MITIGATION_TERMS = (
     "company vehicle",
+    "company car",
     "branded vehicle",
     "fleet vehicle",
     "vehicle provided",
-    "company car",
+    "vehicle allowance",
     "mileage reimbursement",
     "mileage reimbursed",
     "travel reimbursement",
     "travel reimbursed",
+    "company-paid travel",
+    "company paid travel",
+    "paid travel",
     "car allowance",
+)
+
+LICENSE_REQUIRED_TERMS = (
+    "driver's license",
+    "drivers license",
+    "driver license",
+    "valid driver's license",
+    "valid drivers license",
+    "valid driver license",
+    "license required",
+)
+
+DRIVING_RECORD_TERMS = (
+    "clean driving record",
+    "good driving record",
+    "acceptable driving record",
+)
+
+TRAVEL_SUPPORT_TERMS = (
+    "company vehicle",
+    "company car",
+    "branded vehicle",
+    "fleet vehicle",
+    "vehicle provided",
+    "vehicle allowance",
+    "mileage reimbursement",
+    "mileage reimbursed",
+    "travel reimbursement",
+    "travel reimbursed",
+    "company-paid travel",
+    "company paid travel",
+    "paid travel",
+    "car allowance",
+    "travel allowance",
+)
+
+HEAVY_TRAVEL_TERMS = (
+    "heavy travel",
+    "extensive travel",
+    "frequent travel",
+    "50% travel",
+    "60% travel",
+    "70% travel",
+    "80% travel",
+    "nationwide territory",
 )
 
 COMMISSION_RISK_TERMS = (
@@ -483,6 +532,10 @@ def evaluate_job(job: dict) -> dict:
     ats_barriers = contains_phrases(combined, ATS_REJECT_TERMS)
     vehicle_barriers = contains_phrases(combined, VEHICLE_BARRIER_TERMS)
     vehicle_mitigations = contains_phrases(combined, VEHICLE_MITIGATION_TERMS)
+    travel_supported_terms = contains_phrases(combined, TRAVEL_SUPPORT_TERMS)
+    license_required_terms = contains_phrases(combined, LICENSE_REQUIRED_TERMS)
+    driving_record_terms = contains_phrases(combined, DRIVING_RECORD_TERMS)
+    heavy_travel_terms = contains_phrases(combined, HEAVY_TRAVEL_TERMS)
     commission_risks = contains_phrases(combined, COMMISSION_RISK_TERMS)
     base_pay_signals = contains_phrases(combined, BASE_PAY_TERMS) or bool(re.search(r"\$\s?(?:5[0-9]|6[0-9]|7[0-9]|8[0-9])(?:[,k]\d{0,3})?", combined))
     strong_base_signals = contains_phrases(combined, STRONG_BASE_TERMS)
@@ -505,15 +558,21 @@ def evaluate_job(job: dict) -> dict:
     ]
     physical_software_context = bool(physical_software_domains or physical_software_terms)
     local_vehicle_support = metro_local and bool(contains_phrases(combined, ("local territory", "denver territory", "denver office", "denver showroom")))
-    vehicle_supported = bool(vehicle_mitigations or local_vehicle_support or strong_base_signals)
+    travel_supported = bool(travel_supported_terms)
+    vehicle_supported = bool(vehicle_mitigations or local_vehicle_support or strong_base_signals or travel_supported)
     vehicle_barrier = bool(vehicle_barriers and not vehicle_supported)
     commission_only_risk = bool(commission_risks and not base_pay_signals)
+    license_required = bool(license_required_terms)
+    driving_record = bool(driving_record_terms)
+    heavy_travel = bool(heavy_travel_terms)
     if YEARS_REQUIRED_RE.search(combined):
         ats_barriers.append("7+ years required")
     if FIVE_PLUS_SAAS_RE.search(combined):
         ats_barriers.append("5+ years SaaS required")
     if "outside sales" in combined and vehicle_barrier:
         ats_barriers.append("outside sales personal vehicle")
+    if heavy_travel and not travel_supported:
+        ats_barriers.append("heavy travel without support")
 
     title_barrier = any(
         phrase in title
@@ -562,6 +621,7 @@ def evaluate_job(job: dict) -> dict:
     hireability_score -= 14 if vehicle_barrier else 0
     hireability_score -= 18 if commission_only_risk else 0
     hireability_score += 8 if base_pay_signals else 0
+    hireability_score -= 5 if heavy_travel and not travel_supported else 0
     hireability_score -= 6 if title_barrier else 0
     hireability_score = clamp(hireability_score, -30, 30)
 
@@ -683,6 +743,14 @@ def evaluate_job(job: dict) -> dict:
         notes.append("vehicle mitigated: " + ", ".join(vehicle_mitigations[:3]))
     elif local_vehicle_support:
         notes.append("vehicle local support signal")
+    if license_required:
+        notes.append("license required")
+    if travel_supported:
+        notes.append("travel support signal")
+    if heavy_travel and not travel_supported:
+        notes.append("heavy travel without support")
+    if driving_record:
+        notes.append("driving record ok")
     if commission_only_risk:
         notes.append("commission-only risk: " + ", ".join(commission_risks[:3]))
     if base_pay_signals:
@@ -715,6 +783,8 @@ def evaluate_job(job: dict) -> dict:
         warnings.append("Generic remote SaaS")
     if vehicle_barrier:
         warnings.append("Vehicle barrier")
+    if heavy_travel and not travel_supported:
+        warnings.append("Heavy travel")
     if commission_only_risk:
         warnings.append("Commission-only risk")
     if remote_only and label in {"Remote Stretch", "Remote Physical-Industry Stretch"}:
@@ -733,6 +803,10 @@ def evaluate_job(job: dict) -> dict:
         "commission_only_risk": commission_only_risk,
         "base_pay_signal": bool(base_pay_signals),
         "vehicle_support_signal": bool(vehicle_supported),
+        "license_required_signal": bool(license_required),
+        "driving_record_signal": bool(driving_record),
+        "travel_supported_signal": bool(travel_supported),
+        "heavy_travel_signal": bool(heavy_travel),
         "denver_metro_signal": bool(metro_local),
         "localizable_signal": bool(localizable),
         "remote_only_signal": bool(remote_only),

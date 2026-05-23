@@ -283,6 +283,10 @@ def json_job(job: dict) -> dict:
         "commission_only_risk": bool(job.get("commission_only_risk")),
         "base_pay_signal": bool(job.get("base_pay_signal")),
         "vehicle_support_signal": bool(job.get("vehicle_support_signal")),
+        "license_required_signal": bool(job.get("license_required_signal")),
+        "driving_record_signal": bool(job.get("driving_record_signal")),
+        "travel_supported_signal": bool(job.get("travel_supported_signal")),
+        "heavy_travel_signal": bool(job.get("heavy_travel_signal")),
         "denver_metro_signal": bool(job.get("denver_metro_signal")),
         "localizable_signal": bool(job.get("localizable_signal")),
         "remote_only_signal": bool(job.get("remote_only_signal")),
@@ -425,6 +429,87 @@ def test() -> int:
     if sample_jobs[0]["title"] and score_job(sample_jobs[0])[0] <= score_job(sample_jobs[1])[0]:
         print("Test failed: high-fit sample did not outrank noise sample")
         return 1
+
+    vehicle_cases = [
+        (
+            "company vehicle + license",
+            {
+                "company": "VehicleCo",
+                "title": "Field Sales Representative",
+                "location": "Denver",
+                "remote": False,
+                "url": "https://example.com/vehicleco",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Valid driver's license required. Company vehicle and mileage reimbursement provided.",
+            },
+            {"vehicle_barrier": False, "vehicle_support_signal": True, "license_required_signal": True, "travel_supported_signal": True},
+        ),
+        (
+            "own vehicle required",
+            {
+                "company": "VehicleBarriers Inc",
+                "title": "Territory Sales Rep",
+                "location": "Denver",
+                "remote": False,
+                "url": "https://example.com/vehiclebarrier",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Own vehicle required. Must have reliable vehicle. Heavy travel.",
+            },
+            {"vehicle_barrier": True, "vehicle_support_signal": False},
+        ),
+        (
+            "mileage reimbursement",
+            {
+                "company": "TravelPaid LLC",
+                "title": "Account Manager",
+                "location": "Denver",
+                "remote": False,
+                "url": "https://example.com/travelpaid",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Mileage reimbursement and travel reimbursement provided for local territory coverage.",
+            },
+            {"vehicle_barrier": False, "vehicle_support_signal": True, "travel_supported_signal": True},
+        ),
+        (
+            "clean driving record + mileage reimbursement",
+            {
+                "company": "TravelClean LLC",
+                "title": "Territory Sales Representative",
+                "location": "Denver",
+                "remote": False,
+                "url": "https://example.com/travelclean",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Clean driving record required. Mileage reimbursement provided for local territory travel.",
+            },
+            {"vehicle_barrier": False, "driving_record_signal": True, "travel_supported_signal": True},
+        ),
+        (
+            "license only",
+            {
+                "company": "LicenseOnly Co",
+                "title": "Outside Sales Representative",
+                "location": "Denver",
+                "remote": False,
+                "url": "https://example.com/licenseonly",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Valid driver's license required. Local travel and territory coverage.",
+            },
+            {"vehicle_barrier": False, "license_required_signal": True},
+        ),
+    ]
+
+    for label, job, expectations in vehicle_cases:
+        job["id"] = stable_job_id(job["company"], job["title"], job["url"])
+        realism = evaluate_job(job)
+        for key, expected in expectations.items():
+            if bool(realism.get(key)) != expected:
+                print(f"Test failed: {label} expected {key}={expected} got {realism.get(key)}")
+                return 1
 
     print("Test passed.")
     return 0
