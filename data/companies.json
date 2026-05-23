@@ -532,5 +532,140 @@
     "careers_url": "https://evercam.com/about/",
     "ats_type": "generic",
     "enabled": false
+  },
+  {
+    "company_name": "Simpson Strong-Tie",
+    "category": "building_products_tech",
+    "priority": 10,
+    "notes": "Structural solutions and building products company with a public careers page. Strong fit for contractor-facing sales, support, and technical roles.",
+    "careers_url": "https://www.strongtie.com/about/jobs",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "USG Corporation",
+    "category": "building_products_tech",
+    "priority": 10,
+    "notes": "Building products manufacturer with a public careers site. Strong fit for building materials, sales support, and customer-facing roles.",
+    "careers_url": "https://careers.usg.com/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "ABC Supply",
+    "category": "building_materials",
+    "priority": 10,
+    "notes": "Major building products distributor with a public careers page. Strong fit for branch, inside sales, and outside sales roles.",
+    "careers_url": "https://careers.abcsupply.com/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "84 Lumber",
+    "category": "building_materials",
+    "priority": 10,
+    "notes": "Building materials supplier with a public careers site. Strong fit for branch, sales, field, and estimating-related roles.",
+    "careers_url": "https://careers.84lumber.com/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "White Cap",
+    "category": "trade_distribution",
+    "priority": 10,
+    "notes": "Specialty construction distributor with a public careers page. Strong fit for contractor-facing sales, support, and branch roles.",
+    "careers_url": "https://careers.whitecapsupply.com/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "SRS Distribution",
+    "category": "trade_distribution",
+    "priority": 10,
+    "notes": "Specialty trade distribution company with public careers pages. Strong fit for sales and branch roles serving contractors.",
+    "careers_url": "https://www.srsdistribution.com/en/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "HD Supply",
+    "category": "trade_distribution",
+    "priority": 10,
+    "notes": "Contractor and maintenance supply distributor with a public jobs site. Strong fit for inside sales, support, and branch roles.",
+    "careers_url": "https://hdsupply.jobs/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Boise Cascade",
+    "category": "building_materials",
+    "priority": 10,
+    "notes": "Wood products and building materials company with a public careers site. Strong fit for building products, sales, and operations roles.",
+    "careers_url": "https://www.bc.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "GES",
+    "category": "exhibits_events",
+    "priority": 9,
+    "notes": "Global event and exhibit services company with a public careers page. Strong fit for account and on-site project roles.",
+    "careers_url": "https://www.ges.com/about/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Freeman",
+    "category": "exhibits_events",
+    "priority": 9,
+    "notes": "Live events and exhibit services company with a public careers page. Good fit for account, production, and project roles.",
+    "careers_url": "https://freeman.com/about-us/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "W.W. Grainger",
+    "category": "industrial_distribution",
+    "priority": 9,
+    "notes": "Industrial distribution company with a public careers site. Good fit for branch sales, support, and customer-facing roles.",
+    "careers_url": "https://jobs.grainger.com/?locale=en_US",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Motion Industries",
+    "category": "industrial_distribution",
+    "priority": 9,
+    "notes": "Industrial distribution company with a public careers page. Good fit for technical sales, branch, and support roles.",
+    "careers_url": "https://www.motion.com/pages/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Applied Industrial Technologies",
+    "category": "industrial_distribution",
+    "priority": 9,
+    "notes": "Industrial solutions and distribution company with a public jobs portal. Good fit for technical sales and support roles.",
+    "careers_url": "https://jobs.applied.com/us/en/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Ball Corporation",
+    "category": "packaging_technical_sales",
+    "priority": 8,
+    "notes": "Global packaging and manufacturing company with a public careers site. Worth tracking for technical sales and commercial roles.",
+    "careers_url": "https://www.ball.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Smurfit Westrock",
+    "category": "packaging_technical_sales",
+    "priority": 8,
+    "notes": "Global packaging company with a public careers site. Worth tracking for technical sales, operations, and customer-facing roles.",
+    "careers_url": "https://www.smurfitwestrock.com/careers/jobs",
+    "ats_type": "generic",
+    "enabled": true
   }
 ]
