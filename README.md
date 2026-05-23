@@ -74,6 +74,8 @@ Review and edit the public company watchlist:
 data/companies.json
 ```
 
+The curated watchlist is public-source-only and intentionally conservative. It now includes a dedicated construction-tech / jobsite digitization lane for companies that expose discoverable public careers pages or ATS boards, so the radar can monitor that ecosystem directly instead of depending only on broad discovery feeds.
+
 Review and edit broader public discovery sources:
 
 ```bash

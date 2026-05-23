@@ -379,5 +379,158 @@
     "careers_url": "https://www.namastesolar.com/careers/",
     "ats_type": "generic",
     "enabled": true
+  },
+  {
+    "company_name": "Higharc",
+    "category": "homebuilding_tech",
+    "priority": 10,
+    "notes": "Homebuilding intelligence and builder workflow platform. Strong fit for customer success, implementation, solutions consulting, and mid-market sales roles.",
+    "careers_url": "https://www.higharc.com/company/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Clearstory",
+    "category": "contractor_workflow",
+    "priority": 10,
+    "notes": "Construction change-order collaboration platform. Strong fit for customer success, implementation, and consultative commercial roles.",
+    "careers_url": "https://www.clearstory.build/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "TraceAir",
+    "category": "homebuilding_tech",
+    "priority": 10,
+    "notes": "Jobsite intelligence for homebuilders and land development. Strong fit for account management, customer experience, and field-facing roles.",
+    "careers_url": "https://careers.traceair.net/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Buildertrend",
+    "category": "contractor_workflow",
+    "priority": 9,
+    "notes": "Construction management and contractor workflow platform. Public careers page exists, but this source has been blocked in validation, so it is disabled for now.",
+    "careers_url": "https://buildertrend.com/careers/",
+    "ats_type": "generic",
+    "enabled": false
+  },
+  {
+    "company_name": "JobTread",
+    "category": "estimating_takeoff",
+    "priority": 9,
+    "notes": "Construction estimating and job management platform. Strong fit for SMB/mid-market go-to-market and customer-facing workflow roles.",
+    "careers_url": "https://www.jobtread.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Briq",
+    "category": "contractor_workflow",
+    "priority": 9,
+    "notes": "Construction financial workflow automation platform. Strong fit for customer success and solutions roles in construction operations.",
+    "careers_url": "https://careers.briq.ai/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "HCSS",
+    "category": "field_operations",
+    "priority": 9,
+    "notes": "Construction operations software with a public careers center. Strong fit for support, success, and customer-facing construction roles.",
+    "careers_url": "https://careers.hcss.com/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Newforma",
+    "category": "aec_workflow",
+    "priority": 8,
+    "notes": "AECO information management and collaboration platform. Good fit for implementation, support, and AEC workflow roles.",
+    "careers_url": "https://www.newforma.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Revizto",
+    "category": "aec_workflow",
+    "priority": 8,
+    "notes": "Remote-friendly AECO collaboration platform. Good fit for customer success, solutions, and technical sales roles.",
+    "careers_url": "https://revizto.com/company/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Foundation Software",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Construction payroll, job cost, and field management software. Good fit for support, success, and customer operations roles.",
+    "careers_url": "https://www.foundationsoft.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "PlanHub",
+    "category": "estimating_takeoff",
+    "priority": 8,
+    "notes": "Preconstruction and bid management platform. Good fit for SMB construction sales and customer-facing workflow roles.",
+    "careers_url": "https://planhub.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Rhumbix",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Construction field operations and labor tracking platform. Good fit for construction-support and customer-facing roles.",
+    "careers_url": "https://www.rhumbix.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "ALICE Technologies",
+    "category": "aec_workflow",
+    "priority": 10,
+    "notes": "Construction planning and schedule optimization platform. Strong fit for solutions engineering, mid-market sales, and customer success roles.",
+    "careers_url": "https://www.alicetechnologies.com/careers-2",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Homebound",
+    "category": "homebuilding_tech",
+    "priority": 9,
+    "notes": "Tech-enabled homebuilder and homebuilding workflow company. Good fit for project, operations, and customer-facing homebuilding roles.",
+    "careers_url": "https://www.homebound.com/careers",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Built Robotics",
+    "category": "field_operations",
+    "priority": 8,
+    "notes": "Construction robotics and jobsite automation company. More engineering-heavy, but worth tracking for applied field operations roles.",
+    "careers_url": "https://www.builtrobotics.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Siteaware",
+    "category": "reality_capture",
+    "priority": 9,
+    "notes": "Construction verification and jobsite visibility platform. Good fit for customer experience, onboarding, and sales roles tied to field workflows.",
+    "careers_url": "https://siteaware.com/careers/",
+    "ats_type": "generic",
+    "enabled": true
+  },
+  {
+    "company_name": "Evercam",
+    "category": "reality_capture",
+    "priority": 9,
+    "notes": "Construction visibility and reality capture platform. Public site exists, but the careers source was not reliably parseable in validation, so it is disabled for now.",
+    "careers_url": "https://evercam.com/about/",
+    "ats_type": "generic",
+    "enabled": false
   }
 ]

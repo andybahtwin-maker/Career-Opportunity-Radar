@@ -430,16 +430,22 @@ def score_job(job: dict) -> tuple[int, list[str]]:
 
     category = str(job.get("company_category") or "").replace("_", " ")
     if category in {
+        "construction tech",
         "construction saas",
         "contractor workflow",
         "drone reality capture",
         "reality capture",
+        "estimating takeoff",
         "aec tech",
+        "aec workflow",
         "aec geospatial",
         "field operations",
+        "homebuilding tech",
         "mapping visualization",
+        "property operations",
         "building materials",
         "commercial interiors",
+        "building products tech",
         "contractor services",
         "facilities operations",
         "industrial distribution",

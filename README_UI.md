@@ -35,6 +35,8 @@ Ranking prioritizes Denver metro and local/hybrid construction, interiors, showr
 
 Job cards, digest entries, and JSON top opportunities expose warning reasons when scoring detects a non-Denver territory, senior/enterprise stretch, generic remote SaaS context, remote stretch, vehicle barrier, commission-only risk, or already-applied job.
 
+The curated watchlist is public-source-only and conservative, but it now includes a dedicated construction-tech / jobsite digitization lane for companies that publish discoverable public careers pages or ATS boards.
+
 The `Run Radar Now` button saves the current Search Parameters and Candidate Profile, reruns the local radar pipeline, refreshes `data/jobs_archive.json`, regenerates `output/daily_digest.md`, and shows a status message on the Profile tab.
 
 `data/search_profile.md` and `data/candidate_profile.md` are the local dashboard profile files. `data/candidate_profile.md` is local/private and ignored by Git. `data/candidate_profile.example.md` is the committed safe template for that private file. `data/search_profile.md` is committed as a generic public sample; do not add private resume content to it before publishing.
