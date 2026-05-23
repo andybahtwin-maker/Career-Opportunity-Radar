@@ -59,6 +59,13 @@ def rescore_jobs(jobs: list[dict]) -> list[dict]:
         job["practical_fit_label"] = realism["practical_fit_label"]
         job["vehicle_barrier"] = realism["vehicle_barrier"]
         job["commission_only_risk"] = realism["commission_only_risk"]
+        job["non_job_page_signal"] = realism["non_job_page_signal"]
+        job["product_page_signal"] = realism["product_page_signal"]
+        job["marketing_page_signal"] = realism["marketing_page_signal"]
+        job["cookie_script_noise_signal"] = realism["cookie_script_noise_signal"]
+        job["unsupported_foreign_location_signal"] = realism["unsupported_foreign_location_signal"]
+        job["software_engineering_role_signal"] = realism["software_engineering_role_signal"]
+        job["generic_cta_not_job_signal"] = realism["generic_cta_not_job_signal"]
         job["base_pay_signal"] = realism["base_pay_signal"]
         job["vehicle_support_signal"] = realism["vehicle_support_signal"]
         job["license_required_signal"] = realism["license_required_signal"]
@@ -77,6 +84,29 @@ def rescore_jobs(jobs: list[dict]) -> list[dict]:
         job["fit_warnings"] = realism["fit_warnings"]
         job["practical_fit_rank"] = realism["practical_fit_rank"]
         job["realism_notes"] = realism["realism_notes"]
+        if (
+            realism["non_job_page_signal"]
+            or realism["product_page_signal"]
+            or realism["marketing_page_signal"]
+            or realism["cookie_script_noise_signal"]
+            or realism["software_engineering_role_signal"]
+            or realism["generic_cta_not_job_signal"]
+            or realism["unsupported_foreign_location_signal"]
+        ):
+            job["ignored"] = True
+            job["ignored_reason"] = ", ".join(
+                reason
+                for reason, flag in (
+                    ("non_job_page", realism["non_job_page_signal"]),
+                    ("product_page", realism["product_page_signal"]),
+                    ("marketing_page", realism["marketing_page_signal"]),
+                    ("cookie_script_noise", realism["cookie_script_noise_signal"]),
+                    ("unsupported_foreign_location", realism["unsupported_foreign_location_signal"]),
+                    ("software_engineering_role", realism["software_engineering_role_signal"]),
+                    ("generic_cta_not_job", realism["generic_cta_not_job_signal"]),
+                )
+                if flag
+            )
         job["target_profile_hash"] = fingerprint
         rescored.append(job)
     return sorted(rescored, key=job_rank_key)
@@ -241,6 +271,13 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "practical_fit_label": "",
             "vehicle_barrier": False,
             "commission_only_risk": False,
+            "non_job_page_signal": False,
+            "product_page_signal": False,
+            "marketing_page_signal": False,
+            "cookie_script_noise_signal": False,
+            "unsupported_foreign_location_signal": False,
+            "software_engineering_role_signal": False,
+            "generic_cta_not_job_signal": False,
             "base_pay_signal": False,
             "vehicle_support_signal": False,
             "license_required_signal": False,
@@ -261,6 +298,7 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             "realism_notes": [],
             "target_profile_hash": profile_hash(),
             "ignored": False,
+            "ignored_reason": "",
             "applied": False,
         }
 
@@ -273,6 +311,7 @@ def merge_jobs(existing_jobs: list[dict], fetched_jobs: list[dict]) -> tuple[lis
             normalized["applied"] = bool(previous.get("applied", False))
             normalized["notes"] = previous.get("notes", "")
             normalized["applied_date"] = previous.get("applied_date", "")
+            normalized["ignored_reason"] = previous.get("ignored_reason", "")
         else:
             new_count += 1
 

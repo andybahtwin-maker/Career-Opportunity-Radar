@@ -6,6 +6,7 @@ from utils import posting_age_days
 from targeting import (
     contains_any,
     current_targeting,
+    job_page_rejection_reasons,
     is_local_or_localizable,
     job_text,
     non_denver_territory_terms,
@@ -539,6 +540,7 @@ def evaluate_job(job: dict) -> dict:
     commission_risks = contains_phrases(combined, COMMISSION_RISK_TERMS)
     base_pay_signals = contains_phrases(combined, BASE_PAY_TERMS) or bool(re.search(r"\$\s?(?:5[0-9]|6[0-9]|7[0-9]|8[0-9])(?:[,k]\d{0,3})?", combined))
     strong_base_signals = contains_phrases(combined, STRONG_BASE_TERMS)
+    page_rejection_reasons = job_page_rejection_reasons(job)
     targeting = current_targeting()
     territory_conflicts = non_denver_territory_terms(job)
     denver_matches = contains_any(str(job.get("location") or "").lower(), targeting["locations_strong"])
@@ -594,6 +596,13 @@ def evaluate_job(job: dict) -> dict:
         or contains_phrases(combined, ENTERPRISE_SALES_TERMS)
     )
     stale_posting = age is not None and age >= 30
+    non_job_page_signal = bool(page_rejection_reasons)
+    product_page_signal = "product_page" in page_rejection_reasons
+    marketing_page_signal = "marketing_page" in page_rejection_reasons
+    cookie_script_noise_signal = "cookie_script_noise" in page_rejection_reasons
+    unsupported_foreign_location_signal = "unsupported_foreign_location" in page_rejection_reasons
+    software_engineering_role_signal = "software_engineering_role" in page_rejection_reasons
+    generic_cta_not_job_signal = "generic_cta_not_job" in page_rejection_reasons
 
     if high_domains:
         domain_barrier = "high"
@@ -664,6 +673,12 @@ def evaluate_job(job: dict) -> dict:
         label = "Commission-Only Risk"
     elif vehicle_barrier:
         label = "Vehicle Barrier"
+    elif non_job_page_signal or software_engineering_role_signal or generic_cta_not_job_signal:
+        label = "Likely ATS Reject"
+    elif product_page_signal or marketing_page_signal or cookie_script_noise_signal:
+        label = "Likely ATS Reject"
+    elif unsupported_foreign_location_signal:
+        label = "Not a Fit"
     elif ats_barriers and (domain_barrier == "high" or hireability_score < 0):
         label = "Likely ATS Reject"
     elif domain_barrier == "high" and transferability_score < 14:
@@ -753,6 +768,18 @@ def evaluate_job(job: dict) -> dict:
         notes.append("driving record ok")
     if commission_only_risk:
         notes.append("commission-only risk: " + ", ".join(commission_risks[:3]))
+    if non_job_page_signal:
+        notes.append("non-job page: " + ", ".join(page_rejection_reasons[:3]))
+    if product_page_signal:
+        notes.append("product page noise")
+    if marketing_page_signal:
+        notes.append("marketing page noise")
+    if cookie_script_noise_signal:
+        notes.append("cookie/script noise")
+    if unsupported_foreign_location_signal:
+        notes.append("unsupported foreign location")
+    if software_engineering_role_signal:
+        notes.append("software engineering role")
     if base_pay_signals:
         notes.append("base/stable pay signal")
     if denver_matches:
@@ -773,6 +800,18 @@ def evaluate_job(job: dict) -> dict:
     warnings = []
     if domain_barrier == "high":
         warnings.append("High domain barrier")
+    if non_job_page_signal:
+        warnings.append("Non-job page")
+    if product_page_signal:
+        warnings.append("Product page")
+    if marketing_page_signal:
+        warnings.append("Marketing page")
+    if cookie_script_noise_signal:
+        warnings.append("Cookie/script noise")
+    if unsupported_foreign_location_signal:
+        warnings.append("Unsupported foreign location")
+    if software_engineering_role_signal:
+        warnings.append("Software engineering role")
     if territory_conflicts:
         warnings.append("Non-Denver territory")
     if seniority_stretch:
@@ -801,6 +840,13 @@ def evaluate_job(job: dict) -> dict:
         "practical_fit_label": label,
         "vehicle_barrier": vehicle_barrier,
         "commission_only_risk": commission_only_risk,
+        "non_job_page_signal": non_job_page_signal,
+        "product_page_signal": product_page_signal,
+        "marketing_page_signal": marketing_page_signal,
+        "cookie_script_noise_signal": cookie_script_noise_signal,
+        "unsupported_foreign_location_signal": unsupported_foreign_location_signal,
+        "software_engineering_role_signal": software_engineering_role_signal,
+        "generic_cta_not_job_signal": generic_cta_not_job_signal,
         "base_pay_signal": bool(base_pay_signals),
         "vehicle_support_signal": bool(vehicle_supported),
         "license_required_signal": bool(license_required),

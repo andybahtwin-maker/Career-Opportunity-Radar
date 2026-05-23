@@ -171,6 +171,12 @@ def digest_eligible(job: dict) -> bool:
         return False
     if job.get("non_denver_territory_signal"):
         return False
+    if job.get("non_job_page_signal") or job.get("product_page_signal") or job.get("marketing_page_signal"):
+        return False
+    if job.get("cookie_script_noise_signal") or job.get("software_engineering_role_signal") or job.get("generic_cta_not_job_signal"):
+        return False
+    if job.get("unsupported_foreign_location_signal"):
+        return False
     if any(term in title for term in EXCLUDED_DIGEST_TITLE_TERMS):
         return False
     if not any(term in title for term in TARGET_TITLE_TERMS):

@@ -143,12 +143,40 @@ def hard_filter_fetched_jobs(jobs: list[dict], label: str) -> tuple[list[dict], 
         "hard_excluded": 0,
         "vehicle_barrier": 0,
         "commission_only_risk": 0,
+        "non_job_page": 0,
+        "product_page": 0,
+        "marketing_page": 0,
+        "cookie_script_noise": 0,
+        "unsupported_foreign_location": 0,
+        "software_engineering_role": 0,
+        "generic_cta_not_job": 0,
         "not_local": 0,
         "weak_required_signals": 0,
         "low_realism": 0,
     }
     for job in jobs:
         realism = evaluate_job(job)
+        if realism["non_job_page_signal"]:
+            rejected["non_job_page"] += 1
+            continue
+        if realism["product_page_signal"]:
+            rejected["product_page"] += 1
+            continue
+        if realism["marketing_page_signal"]:
+            rejected["marketing_page"] += 1
+            continue
+        if realism["cookie_script_noise_signal"]:
+            rejected["cookie_script_noise"] += 1
+            continue
+        if realism["unsupported_foreign_location_signal"]:
+            rejected["unsupported_foreign_location"] += 1
+            continue
+        if realism["software_engineering_role_signal"]:
+            rejected["software_engineering_role"] += 1
+            continue
+        if realism["generic_cta_not_job_signal"]:
+            rejected["generic_cta_not_job"] += 1
+            continue
         if realism["vehicle_barrier"]:
             rejected["vehicle_barrier"] = rejected.get("vehicle_barrier", 0) + 1
             continue
@@ -281,6 +309,13 @@ def json_job(job: dict) -> dict:
         "hireability_score": job.get("hireability_score", 0),
         "vehicle_barrier": bool(job.get("vehicle_barrier")),
         "commission_only_risk": bool(job.get("commission_only_risk")),
+        "non_job_page_signal": bool(job.get("non_job_page_signal")),
+        "product_page_signal": bool(job.get("product_page_signal")),
+        "marketing_page_signal": bool(job.get("marketing_page_signal")),
+        "cookie_script_noise_signal": bool(job.get("cookie_script_noise_signal")),
+        "unsupported_foreign_location_signal": bool(job.get("unsupported_foreign_location_signal")),
+        "software_engineering_role_signal": bool(job.get("software_engineering_role_signal")),
+        "generic_cta_not_job_signal": bool(job.get("generic_cta_not_job_signal")),
         "base_pay_signal": bool(job.get("base_pay_signal")),
         "vehicle_support_signal": bool(job.get("vehicle_support_signal")),
         "license_required_signal": bool(job.get("license_required_signal")),
@@ -510,6 +545,62 @@ def test() -> int:
             if bool(realism.get(key)) != expected:
                 print(f"Test failed: {label} expected {key}={expected} got {realism.get(key)}")
                 return 1
+
+    noise_cases = [
+        (
+            "generic apply now",
+            {
+                "company": "Homebound",
+                "title": "Apply now",
+                "location": "",
+                "remote": False,
+                "url": "https://example.com/apply-now",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Cookie consent script class= fill= svg var addEventListener.",
+            },
+            {"non_job_page_signal": True, "generic_cta_not_job_signal": True},
+        ),
+        (
+            "software engineer",
+            {
+                "company": "Trimble",
+                "title": "Junior Software Engineer",
+                "location": "Remote",
+                "remote": True,
+                "url": "https://example.com/software-engineer",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Build software engineering tools for the platform.",
+            },
+            {"software_engineering_role_signal": True},
+        ),
+        (
+            "foreign location",
+            {
+                "company": "Fieldwire",
+                "title": "Customer Success Manager",
+                "location": "Austria (Remote)",
+                "remote": True,
+                "url": "https://example.com/foreign",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Remote role for Europe and Austria only.",
+            },
+            {"unsupported_foreign_location_signal": True},
+        ),
+    ]
+
+    for label, job, expectations in noise_cases:
+        job["id"] = stable_job_id(job["company"], job["title"], job["url"])
+        realism = evaluate_job(job)
+        for key, expected in expectations.items():
+            if bool(realism.get(key)) != expected:
+                print(f"Test failed: {label} expected {key}={expected} got {realism.get(key)}")
+                return 1
+        if realism["practical_fit_label"] not in {"Likely ATS Reject", "Not a Fit"}:
+            print(f"Test failed: {label} should not score as a fit, got {realism['practical_fit_label']}")
+            return 1
 
     print("Test passed.")
     return 0

@@ -4,6 +4,7 @@ import re
 from urllib.parse import urljoin
 
 from utils import clean_text, safe_fetch_text, strip_html
+from targeting import job_page_rejection_reasons, likely_job_posting
 
 
 JOB_LINK_RE = re.compile(
@@ -117,6 +118,7 @@ def fetch_generic(company: dict) -> tuple[list[dict], list[str]]:
         return [], [f"{company['company_name']}: {error}"]
 
     jobs = []
+    rejected_reasons: dict[str, int] = {}
     seen = set()
     for match in JOB_LINK_RE.finditer(html):
         label = strip_html(match.group("label"))
@@ -131,30 +133,33 @@ def fetch_generic(company: dict) -> tuple[list[dict], list[str]]:
             continue
         has_role_label = any(word in label_lower for word in ROLE_WORDS)
         has_job_url = any(word in href_lower for word in JOB_URL_HINTS)
-        if not has_role_label and not has_job_url:
+        nearby = clean_text(html[max(0, match.start() - 500) : match.end() + 500])
+        candidate = {
+            "company": company["company_name"],
+            "title": label,
+            "location": "",
+            "remote": "remote" in nearby.lower(),
+            "url": href,
+            "external_id": href,
+            "date_posted": "",
+            "ats_source": "generic",
+            "raw_description": nearby,
+        }
+        candidate_reasons = job_page_rejection_reasons(candidate)
+        if candidate_reasons:
+            for reason in candidate_reasons:
+                rejected_reasons[reason] = rejected_reasons.get(reason, 0) + 1
+            continue
+        if not has_role_label and not has_job_url and not likely_job_posting(candidate):
             continue
         if len(label) < 6 or len(label) > 120 or href in seen:
             continue
         seen.add(href)
-        nearby = clean_text(html[max(0, match.start() - 500) : match.end() + 500])
-        jobs.append(
-            {
-                "company": company["company_name"],
-                "title": label,
-                "location": "",
-                "remote": "remote" in nearby.lower(),
-                "url": href,
-                "external_id": href,
-                "date_posted": "",
-                "ats_source": "generic",
-                "raw_description": nearby,
-            }
-        )
-    return jobs, []
-    "market representative",
-    "millwork",
-    "specification sales",
-    "specifier sales",
-    "surface sales",
-    "slab sales",
-    "stone sales",
+        if not likely_job_posting(candidate):
+            continue
+        jobs.append(candidate)
+    warnings = [
+        f"{company['company_name']}: generic rejected {count} pages for {reason.replace('_', ' ')}"
+        for reason, count in sorted(rejected_reasons.items())
+    ]
+    return jobs, warnings

@@ -43,6 +43,166 @@ NON_DENVER_MARKET_TERMS = (
     "california",
 )
 
+FOREIGN_LOCATION_TERMS = (
+    "apac",
+    "australia",
+    "austria",
+    "belgium",
+    "canada",
+    "copenhagen",
+    "denmark",
+    "emea",
+    "europe",
+    "france",
+    "germany",
+    "india",
+    "london",
+    "malmö",
+    "netherlands",
+    "pakistan",
+    "pune",
+    "singapore",
+    "sweden",
+    "switzerland",
+    "sydney",
+    "toronto",
+    "uk",
+    "vienna",
+)
+
+FOREIGN_REMOTE_US_TERMS = (
+    "remote us",
+    "remote u.s.",
+    "remote united states",
+    "us candidates",
+    "u.s. candidates",
+    "usa candidates",
+    "eligible for us",
+    "eligible for u.s.",
+    "based in the us",
+    "based in the u.s.",
+)
+
+GENERIC_JOB_TITLE_NOISE_EXACT = {
+    "apply now",
+    "see open roles",
+    "open roles",
+    "careers",
+    "join our team",
+    "complete job",
+    "developers.cloudflare.com",
+    "cookies",
+    "cookie",
+}
+
+GENERIC_JOB_TITLE_PRODUCT_EXACT = {
+    "showroom",
+    "windows",
+    "kitchen sinks",
+    "the edge estimator",
+}
+
+GENERIC_JOB_TITLE_MARKETING_EXACT = {
+    "bogo",
+    "sale",
+    "promotion",
+    "customer stories",
+    "blog",
+    "webinar",
+}
+
+GENERIC_JOB_TITLE_NON_JOB_EXACT = {
+    "privacy policy",
+    "terms",
+    "login",
+    "contact us",
+    "product",
+    "features",
+    "resources",
+}
+
+SOFTWARE_ENGINEERING_ROLE_TERMS = (
+    "software engineer",
+    "backend engineer",
+    "frontend engineer",
+    "full stack engineer",
+    "fullstack engineer",
+    "iOS engineer",
+    "ios engineer",
+    "android engineer",
+    "mobile engineer",
+    "devops",
+    "site reliability engineer",
+    "sre",
+    "product manager",
+    "product management",
+    "growth marketing",
+    "demand generation",
+    "marketing manager",
+    "ux designer",
+    "ui designer",
+    "designer ux",
+)
+
+JOB_POSTING_URL_HINTS = (
+    "/careers/",
+    "/jobs/",
+    "/job/",
+    "/openings/",
+    "/positions/",
+    "/greenhouse/",
+    "/lever/",
+    "/workable/",
+    "/ashby/",
+    "jobid=",
+    "gh_jid=",
+)
+
+JOB_POSTING_DESCRIPTION_TERMS = (
+    "responsibilities",
+    "requirements",
+    "qualifications",
+    "benefits",
+    "compensation",
+    "salary",
+    "posted",
+    "requisition",
+    "req ",
+    "department",
+    "team",
+    "employment type",
+    "full-time",
+    "part-time",
+    "contract",
+    "location",
+    "about the role",
+    "what you'll do",
+    "what youll do",
+)
+
+JOB_POSTING_TITLE_TERMS = (
+    "account",
+    "associate",
+    "coordinator",
+    "consultant",
+    "designer",
+    "director",
+    "engineer",
+    "manager",
+    "rep",
+    "representative",
+    "sales",
+    "specialist",
+    "success",
+    "support",
+    "technician",
+    "analyst",
+    "estimator",
+    "implementation",
+    "operations",
+    "project",
+)
+
 REMOTE_ANYWHERE_TERMS = (
     "remote anywhere",
     "remote from anywhere",
@@ -491,6 +651,122 @@ def job_text(job: dict) -> str:
             for key in ("title", "company", "location", "raw_description", "source_name", "ats_source", "discovery_keyword")
         )
     )
+
+
+def job_page_text(job: dict) -> str:
+    return normalize_text(
+        " ".join(
+            str(job.get(key, ""))
+            for key in ("title", "url", "location", "raw_description", "source_name", "ats_source")
+        )
+    )
+
+
+def title_looks_like_job(title: str) -> bool:
+    title = normalize_text(title)
+    if not title:
+        return False
+    if title in GENERIC_JOB_TITLE_NOISE_EXACT:
+        return False
+    if title in GENERIC_JOB_TITLE_PRODUCT_EXACT:
+        return False
+    if title in GENERIC_JOB_TITLE_MARKETING_EXACT:
+        return False
+    if title in GENERIC_JOB_TITLE_NON_JOB_EXACT:
+        return False
+    return contains_any(title, JOB_POSTING_TITLE_TERMS) or bool(re.search(r"\b[A-Za-z]{3,}\b(?:\s+[A-Za-z]{2,}){1,4}", title))
+
+
+def unsupported_foreign_location_terms(job: dict) -> list[str]:
+    title_location = normalize_text(f"{job.get('title', '')} {job.get('location', '')}")
+    if re.search(r"\b(?:united states|usa|u\.s\.|us)\b", title_location):
+        return []
+    direct_matches = contains_any(title_location, FOREIGN_LOCATION_TERMS)
+    if direct_matches:
+        return direct_matches
+    text = job_page_text(job)
+    if contains_any(text, FOREIGN_REMOTE_US_TERMS):
+        return []
+    matches = []
+    for term in FOREIGN_LOCATION_TERMS:
+        if term in text:
+            matches.append(term)
+    return dedupe(matches)
+
+
+def job_page_rejection_reasons(job: dict) -> list[str]:
+    title = normalize_text(job.get("title"))
+    url = normalize_text(job.get("url"))
+    text = job_page_text(job)
+    reasons = []
+
+    if title in GENERIC_JOB_TITLE_NOISE_EXACT:
+        reasons.append("generic_cta_not_job")
+    if title in GENERIC_JOB_TITLE_PRODUCT_EXACT:
+        reasons.append("product_page")
+    if title in GENERIC_JOB_TITLE_MARKETING_EXACT:
+        reasons.append("marketing_page")
+    if title in GENERIC_JOB_TITLE_NON_JOB_EXACT:
+        reasons.append("non_job_page")
+
+    if any(part in url for part in (
+        "/product/",
+        "/products/",
+        "/features/",
+        "/resources/",
+        "/blog/",
+        "/customer-stories/",
+        "/showroom/",
+        "/windows/",
+        "/kitchen-sinks/",
+        "/privacy/",
+        "/terms/",
+        "/login/",
+        "/contact/",
+        "/webinars/",
+    )):
+        if any(part in url for part in ("/blog/", "/customer-stories/", "/webinars/")):
+            reasons.append("marketing_page")
+        elif any(part in url for part in ("/product/", "/products/", "/showroom/", "/windows/", "/kitchen-sinks/")):
+            reasons.append("product_page")
+        else:
+            reasons.append("non_job_page")
+
+    if contains_any(text, ("cookie consent", "wpconsent", "script)", "class=", "fill=", "svg", "var ", "addeventlistener", "youtube.com", "youtu.be")):
+        reasons.append("cookie_script_noise")
+
+    if contains_any(title, SOFTWARE_ENGINEERING_ROLE_TERMS) or contains_any(text, SOFTWARE_ENGINEERING_ROLE_TERMS):
+        reasons.append("software_engineering_role")
+
+    if unsupported_foreign_location_terms(job):
+        reasons.append("unsupported_foreign_location")
+
+    if "cloudflare" in text or "developers.cloudflare.com" in text:
+        reasons.append("cookie_script_noise")
+
+    return dedupe(reasons)
+
+
+def likely_job_posting(job: dict) -> bool:
+    title = normalize_text(job.get("title"))
+    url = normalize_text(job.get("url"))
+    text = job_page_text(job)
+    reasons = job_page_rejection_reasons(job)
+    if reasons:
+        return False
+
+    signals = 0
+    if title_looks_like_job(title):
+        signals += 1
+    if any(hint in url for hint in JOB_POSTING_URL_HINTS):
+        signals += 1
+    if contains_any(text, JOB_POSTING_DESCRIPTION_TERMS):
+        signals += 1
+    if "apply" in text and contains_any(text, ("responsibilities", "requirements", "qualifications", "benefits")):
+        signals += 1
+    if contains_any(text, ("job id", "requisition", "req ", "posted", "location", "salary", "benefits", "employment type")):
+        signals += 1
+    return signals >= 2
 
 
 def bullets_after(text: str, heading: str, after_heading: str | None = None) -> list[str]:
