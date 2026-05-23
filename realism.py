@@ -6,6 +6,7 @@ from utils import posting_age_days
 from targeting import (
     contains_any,
     current_targeting,
+    clear_colorado_signal,
     job_page_rejection_reasons,
     is_local_or_localizable,
     job_text,
@@ -547,7 +548,7 @@ def evaluate_job(job: dict) -> dict:
     local_work_patterns = contains_any(combined, targeting["locations_moderate"])
     remote_job = bool(job.get("remote")) or "remote" in str(job.get("location") or "").lower()
     localizable = is_local_or_localizable(job)
-    metro_local = bool(denver_matches) or "colorado" in str(job.get("location") or "").lower()
+    metro_local = clear_colorado_signal(job) and not territory_conflicts
     remote_only = remote_job and not metro_local and not local_work_patterns
     remote_saas = remote_job and not metro_local and bool(contains_phrases(combined, REMOTE_SAAS_TERMS))
     physical_software_terms = contains_phrases(combined, PHYSICAL_INDUSTRY_SOFTWARE_TERMS)
@@ -652,6 +653,35 @@ def evaluate_job(job: dict) -> dict:
     )
     local_sales_title = contains_phrases(title, LOCAL_SALES_TITLE_TERMS)
     local_technical_title = contains_phrases(title, LOCAL_TECHNICAL_DESIGN_TITLE_TERMS)
+    generic_sales_title = contains_phrases(
+        title,
+        (
+            "inside sales representative",
+            "inside sales consultant",
+            "inside sales",
+            "sales representative",
+            "sales consultant",
+            "account executive",
+            "territory sales representative",
+            "territory sales manager",
+            "bdr",
+            "sdr",
+            "account manager",
+        ),
+    )
+    generic_sales_only = bool(generic_sales_title) and not bool(low_domains or moderate_domains or physical_software_context or local_design_sales_fit or local_technical_title)
+    estimator_depth_signal = "estimator" in title and contains_phrases(
+        combined,
+        (
+            "heavy civil",
+            "detailed estimates",
+            "plans",
+            "specifications",
+            "scopes of work",
+            "from plans",
+            "estimate from plans",
+        ),
+    )
     realistic_remote_title = contains_phrases(title, REALISTIC_REMOTE_TITLE_TERMS)
     enterprise_sales_barriers = contains_phrases(combined, ENTERPRISE_SALES_TERMS)
     construction_context = bool(
@@ -685,6 +715,12 @@ def evaluate_job(job: dict) -> dict:
         label = "Not a Fit"
     elif side_cash_fit:
         label = "Side-Cash Contractor"
+    elif estimator_depth_signal and not local_design_sales_fit:
+        label = "Realistic Stretch"
+    elif generic_sales_only and not local_design_sales_fit and not physical_software_context:
+        label = "Remote Stretch"
+    elif territory_conflicts and not local_design_sales_fit and not physical_software_context:
+        label = "Remote Stretch"
     elif remote_saas and not physical_software_context and not strong_remote_context and (enterprise_sales_barriers or transferability_score < 14):
         label = "Semantic Match Only"
     elif remote_saas and not physical_software_context and (title_barrier or enterprise_sales_barriers or not strong_remote_context):
@@ -695,7 +731,7 @@ def evaluate_job(job: dict) -> dict:
         label = "Strong Construction/Design Sales Fit"
     elif metro_local and domain_barrier in {"low", "moderate"} and transferability_score >= 14 and hireability_score >= 14:
         label = "Strong Local Fit"
-    elif localizable and metro_local and (local_sales_title or local_design_sales_fit) and hireability_score >= 8:
+    elif localizable and metro_local and (local_sales_title or local_design_sales_fit) and hireability_score >= 8 and not generic_sales_only:
         label = "Realistic Local Sales Fit"
     elif localizable and metro_local and local_technical_title and (local_design_sales_fit or construction_context) and hireability_score >= 8:
         label = "Realistic Local Design/Technical Fit"

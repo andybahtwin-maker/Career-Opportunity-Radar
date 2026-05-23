@@ -602,6 +602,125 @@ def test() -> int:
             print(f"Test failed: {label} should not score as a fit, got {realism['practical_fit_label']}")
             return 1
 
+    location_cases = [
+        (
+            "dallas territory",
+            {
+                "company": "HD Supply",
+                "title": "Construction Sales Consultant (Reno) - Dallas Ft. Worth",
+                "location": "Denver / United States",
+                "remote": False,
+                "url": "https://example.com/hd-supply-dallas",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Territory: Dallas / Fort Worth - Texas. Construction and installation-based sales.",
+            },
+            {"non_denver_territory_signal": True},
+            {"Strong Local Fit", "Realistic Local Sales Fit"},
+        ),
+        (
+            "philadelphia market",
+            {
+                "company": "Agent",
+                "title": "Inside Sales Representative/BDR",
+                "location": "Denver / United States",
+                "remote": False,
+                "url": "https://example.com/agent-philly",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Growing residential property services company serving the Philadelphia market.",
+            },
+            {"non_denver_territory_signal": True},
+            {"Strong Local Fit", "Realistic Local Sales Fit"},
+        ),
+        (
+            "ambiguous co columbia chile",
+            {
+                "company": "Bentley",
+                "title": "Consultant, SYNCHRO 4D Construction",
+                "location": "Remote, CO",
+                "remote": True,
+                "url": "https://example.com/bentley-synchro",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Home Based, Columbia, Chili. International rollout and non-US context.",
+            },
+            {"unsupported_foreign_location_signal": True},
+            {"Strong Local Fit", "Realistic Local Sales Fit"},
+        ),
+        (
+            "foreign language sales",
+            {
+                "company": "Vobi",
+                "title": "Inside Sales - Engenharia Civil e Arquitetura",
+                "location": "Remote",
+                "remote": True,
+                "url": "https://example.com/vobi",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Portuguese language role for Brazil and Latin America markets.",
+            },
+            {},
+            {"Strong Local Fit", "Realistic Local Sales Fit"},
+        ),
+        (
+            "pvcase cta",
+            {
+                "company": "PVcase",
+                "title": "Didn't find what you were looking for?",
+                "location": "",
+                "remote": False,
+                "url": "https://example.com/pvcase",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Talent pool and future openings.",
+            },
+            {"non_job_page_signal": True, "generic_cta_not_job_signal": True},
+            {"Strong Local Fit", "Realistic Local Sales Fit", "Strong Construction Tech Fit"},
+        ),
+        (
+            "generic sales",
+            {
+                "company": "WEX",
+                "title": "Inside Sales Representative 1 - Own Quota",
+                "location": "Denver / United States",
+                "remote": False,
+                "url": "https://example.com/wex",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Fleet card sales with value proposition and price objections.",
+            },
+            {},
+            {"Strong Local Fit", "Realistic Local Sales Fit"},
+        ),
+        (
+            "heavy civil estimator",
+            {
+                "company": "Bristol Bay Construction Holdings LLC",
+                "title": "Heavy Civil Estimator",
+                "location": "Denver / United States",
+                "remote": False,
+                "url": "https://example.com/heavy-civil",
+                "date_posted": today_iso(),
+                "first_seen": today_iso(),
+                "raw_description": "Prepare detailed estimates for projects based on construction plans, specifications, and scopes of work.",
+            },
+            {},
+            {"Strong Local Fit"},
+        ),
+    ]
+
+    for label, job, expectations, forbidden_labels in location_cases:
+        job["id"] = stable_job_id(job["company"], job["title"], job["url"])
+        realism = evaluate_job(job)
+        for key, expected in expectations.items():
+            if bool(realism.get(key)) != expected:
+                print(f"Test failed: {label} expected {key}={expected} got {realism.get(key)}")
+                return 1
+        if realism["practical_fit_label"] in forbidden_labels:
+            print(f"Test failed: {label} got forbidden label {realism['practical_fit_label']}")
+            return 1
+
     print("Test passed.")
     return 0
 

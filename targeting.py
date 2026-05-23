@@ -23,6 +23,12 @@ DENVER_AREA_TERMS = (
     "commerce city",
     "golden",
     "thornton",
+    "fort collins",
+    "loveland",
+    "greeley",
+    "castle rock",
+    "longmont",
+    "colorado springs",
 )
 
 NON_DENVER_MARKET_TERMS = (
@@ -37,7 +43,13 @@ NON_DENVER_MARKET_TERMS = (
     "seattle",
     "austin",
     "dallas",
+    "fort worth",
     "atlanta",
+    "philadelphia",
+    "philly",
+    "orange county",
+    "memphis",
+    "tampa",
     "florida",
     "texas",
     "california",
@@ -57,8 +69,10 @@ FOREIGN_LOCATION_TERMS = (
     "germany",
     "india",
     "london",
+    "malaysia",
     "malmö",
     "netherlands",
+    "portugal",
     "pakistan",
     "pune",
     "singapore",
@@ -66,6 +80,11 @@ FOREIGN_LOCATION_TERMS = (
     "switzerland",
     "sydney",
     "toronto",
+    "brazil",
+    "colombia",
+    "columbia",
+    "chile",
+    "chili",
     "uk",
     "vienna",
 )
@@ -85,15 +104,38 @@ FOREIGN_REMOTE_US_TERMS = (
 
 GENERIC_JOB_TITLE_NOISE_EXACT = {
     "apply now",
+    "didn't find what you were looking for?",
+    "didn’t find what you were looking for?",
+    "didn't find what you were looking for",
+    "didn’t find what you were looking for",
     "see open roles",
     "open roles",
     "careers",
     "join our team",
     "complete job",
+    "send your cv",
+    "let's talk about you",
+    "lets talk about you",
+    "general application",
+    "open application",
+    "future openings",
+    "talent pool",
     "developers.cloudflare.com",
     "cookies",
     "cookie",
 }
+
+GENERIC_CTA_PHRASES = (
+    "didn't find what you were looking for",
+    "didn’t find what you were looking for",
+    "send your cv",
+    "let's talk about you",
+    "lets talk about you",
+    "general application",
+    "open application",
+    "future openings",
+    "talent pool",
+)
 
 GENERIC_JOB_TITLE_PRODUCT_EXACT = {
     "showroom",
@@ -178,6 +220,27 @@ JOB_POSTING_DESCRIPTION_TERMS = (
     "about the role",
     "what you'll do",
     "what youll do",
+)
+
+REMOTE_LOCALIZABLE_TERMS = (
+    "customer success",
+    "customer onboarding",
+    "implementation",
+    "onboarding",
+    "mid-market",
+    "smb",
+    "construction",
+    "aec",
+    "contractor",
+    "homebuilding",
+    "field operations",
+    "geospatial",
+    "drone",
+    "reality capture",
+    "building materials",
+    "building products",
+    "industrial distribution",
+    "manufacturing operations",
 )
 
 JOB_POSTING_TITLE_TERMS = (
@@ -565,40 +628,17 @@ def is_local_or_localizable(job: dict) -> bool:
     location = normalize_text(job.get("location"))
     text = job_text(job)
     targeting = current_targeting()
-    foreign_terms = (
-        "apac",
-        "australia",
-        "austria",
-        "canada",
-        "copenhagen",
-        "denmark",
-        "emea",
-        "europe",
-        "france",
-        "germany",
-        "india",
-        "london",
-        "netherlands",
-        "singapore",
-        "sweden",
-        "switzerland",
-        "sydney",
-        "toronto",
-        "uk",
-        "vienna",
-    )
-    if contains_any(location, foreign_terms) and not contains_any(location, ("united states", "usa", "us")):
-        return False
-    if contains_any(location, targeting["locations_strong"]):
-        return True
     if non_denver_territory_terms(job):
         return False
+    if contains_any(location, FOREIGN_LOCATION_TERMS) and not re.search(r"\b(?:united states|usa|u\.s\.|us)\b", location):
+        return False
+    if clear_colorado_signal(job):
+        return True
     if contains_any(location, targeting["locations_moderate"]):
         return True
-    if "colorado" in location or ", co" in location:
-        return True
     if job.get("remote") and not contains_any(text, targeting["locations_negative"]):
-        return matching_required_positive_count(text) >= 2
+        if contains_any(text, REMOTE_LOCALIZABLE_TERMS) and matching_required_positive_count(text) >= 1:
+            return True
     return False
 
 
@@ -606,11 +646,25 @@ def has_remote_anywhere_signal(job: dict) -> bool:
     return bool(contains_any(job_text(job), REMOTE_ANYWHERE_TERMS))
 
 
+def clear_colorado_signal(job: dict) -> bool:
+    title = normalize_text(job.get("title"))
+    location = normalize_text(job.get("location"))
+    description = normalize_text(job.get("raw_description"))
+    title_description = f"{title} {description}"
+    if contains_any(title_description, DENVER_AREA_TERMS):
+        return True
+    if "colorado" in title_description:
+        return True
+    if contains_any(title_description, ("denver office", "denver showroom", "denver territory", "front range", "colorado territory")):
+        return True
+    if contains_any(location, ("denver / colorado", "colorado")):
+        return True
+    return False
+
+
 def non_denver_territory_terms(job: dict) -> list[str]:
     targeting = current_targeting()
     title_location = normalize_text(f"{job.get('title', '')} {job.get('location', '')}")
-    if contains_any(title_location, targeting["locations_strong"]) or "colorado" in title_location or ", co" in title_location:
-        return []
 
     direct_matches = contains_any(title_location, NON_DENVER_MARKET_TERMS)
     if direct_matches:
@@ -619,19 +673,18 @@ def non_denver_territory_terms(job: dict) -> list[str]:
         return []
 
     description = normalize_text(job.get("raw_description"))
-    context_terms = ("territory", "market", "region", "preferred", "based", "located")
+    context_terms = ("territory", "market", "region", "preferred", "based", "located", "must reside in", "only open to residents in")
     if not contains_any(description, context_terms):
         return []
     matches = []
     for market in NON_DENVER_MARKET_TERMS:
         if market not in description:
             continue
-        context_patterns = (
-            rf"\b{re.escape(market)}\b.{{0,40}}\b(?:territory|market|region|preferred|based|located)\b",
-            rf"\b(?:territory|market|region|preferred|based|located)\b.{{0,40}}\b{re.escape(market)}\b",
-        )
-        if any(re.search(pattern, description) for pattern in context_patterns):
+        if contains_any(description, context_terms):
             matches.append(market)
+    abbrev_text = f"{title_location} {description}"
+    if re.search(r"\b(?:atl|tx|fl)\b", abbrev_text) and contains_any(abbrev_text, context_terms):
+        matches.append("state/region restriction")
     return matches
 
 
@@ -708,6 +761,8 @@ def job_page_rejection_reasons(job: dict) -> list[str]:
         reasons.append("marketing_page")
     if title in GENERIC_JOB_TITLE_NON_JOB_EXACT:
         reasons.append("non_job_page")
+    if contains_any(title, GENERIC_CTA_PHRASES) or contains_any(text, GENERIC_CTA_PHRASES):
+        reasons.append("generic_cta_not_job")
 
     if any(part in url for part in (
         "/product/",
