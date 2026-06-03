@@ -4,9 +4,6 @@ It is built for targeted review, not mass application spam. It does not auto-app
 
 Built as a practical example of local-first automation, workflow design, and AI-assisted software development for technical sales/job-search operations.
 
-<img width="1276" height="1482" alt="1779825239209" src="https://github.com/user-attachments/assets/9dd9461f-33a0-44a4-a56b-636d880f576d" />
-
-
 **Jobs / Radar dashboard**
 <img width="1756" height="1442" alt="radar-screenshot-20260519-184355" src="https://github.com/user-attachments/assets/54a0e580-eec8-4162-869b-2b38169ec56e" />
 
